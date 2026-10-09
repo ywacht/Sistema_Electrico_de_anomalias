@@ -1,0 +1,1 @@
+# Sistema_Electrico_de_anomalias
