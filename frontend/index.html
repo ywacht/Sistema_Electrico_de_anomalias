@@ -3,44 +3,102 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EcoGrid AI — Plataforma Inteligente Gestora de Energía Eléctrica</title>
+  <title>EcoGrid AI — Plataforma Inteligente Gestora de Energía Eléctrica (UTC)</title>
   <link rel="stylesheet" href="styles.css">
   <!-- Chart.js para visualización de series de tiempo -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-  <div class="container">
-    <!-- Header Institucional -->
+  <!-- ============================================================== -->
+  <!-- PANTALLA 1: LOGIN DE ACCESO AL SISTEMA SCADA / ECOGRID AI      -->
+  <!-- ============================================================== -->
+  <div id="loginScreen" class="login-wrapper">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-logo">⚡</div>
+        <h2>EcoGrid <span>AI</span></h2>
+        <p class="login-institution">Universidad Tecnológica de Calvillo (UTC)</p>
+        <p class="login-desc">Ingeniería en Tecnologías — Área Desarrollo de Software (7mo)</p>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+        <div class="form-group">
+          <label for="loginEmail">Correo Institucional / Usuario:</label>
+          <input type="text" id="loginEmail" placeholder="operador@utc.edu.mx" value="operador@utc.edu.mx" required>
+        </div>
+
+        <div class="form-group">
+          <label for="loginPassword">Contraseña de Operador:</label>
+          <input type="password" id="loginPassword" placeholder="••••••••••••" value="utc7mo2026" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; margin-top: 10px; font-size: 1rem;">
+          🔐 Iniciar Sesión en Sistema SCADA
+        </button>
+
+        <button type="button" class="btn btn-secondary" onclick="quickLoginDemo()" style="width: 100%; padding: 10px; margin-top: 10px; font-size: 0.88rem; border-color: #3b82f6; color: #60a5fa;">
+          ⚡ Acceso Rápido Demo (1 Clic)
+        </button>
+
+        <div id="loginErrorMsg" class="login-error" style="display: none;"></div>
+      </form>
+
+      <div class="login-footer">
+        <span class="badge" style="background: rgba(0, 210, 106, 0.15); color: #00d26a; font-size: 0.72rem;">
+          🛡️ Infraestructura protegida por Honeypot y Anti-DoS
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- PANTALLAS PRINCIPALES DEL SISTEMA (DASHBOARD COMPLETO)          -->
+  <!-- ============================================================== -->
+  <div id="appScreen" class="container" style="display: none;">
+    <!-- Header Institucional con Perfil de Usuario -->
     <header>
       <div class="logo-section">
         <h1>⚡ EcoGrid <span>AI</span></h1>
         <p class="subtitle">Universidad Tecnológica de Calvillo (UTC) — Ingeniería en Tecnologías (7mo Cuatrimestre)</p>
         <p class="subtitle" style="color: #60a5fa;">Monitoreo en Tiempo Real | Predicción de Picos | Desconexión de Cargas | Honeypot SCADA</p>
       </div>
+
       <div class="system-status">
+        <div class="user-profile-badge">
+          <span style="font-size: 1.2rem;">👤</span>
+          <div>
+            <div id="userNameDisplay" style="font-weight: bold; font-size: 0.85rem; color: #fff;">Ing. Residente UTC</div>
+            <div id="userRoleDisplay" style="font-size: 0.72rem; color: #94a3b8;">Operador de Subestación</div>
+          </div>
+        </div>
+
         <div class="badge badge-online">
           <div class="badge-pulse"></div>
           <span id="backendStatusText">Sistema Activo</span>
         </div>
+
         <div id="activePatternBadge" class="badge" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6;">
           Patrón IA: Normal
         </div>
+
+        <button class="btn btn-danger" onclick="handleLogout()" style="padding: 6px 14px; font-size: 0.8rem;">
+          🚪 Salir
+        </button>
       </div>
     </header>
 
-    <!-- Navegación de Pestañas -->
+    <!-- Navegación de Pantallas / Pestañas -->
     <nav class="tabs-nav">
-      <button class="tab-btn active" onclick="switchTab('tab-monitoring')">📊 Monitoreo Energético & IA</button>
-      <button class="tab-btn" onclick="switchTab('tab-relay')">🔌 Desconexión de Cargas</button>
-      <button class="tab-btn" onclick="switchTab('tab-textmining')">📝 Minería de Texto (Fallas)</button>
-      <button class="tab-btn" onclick="switchTab('tab-security')">🛡️ Ciberseguridad & Honeypot</button>
-      <button class="tab-btn" onclick="switchTab('tab-simulator')">🧪 Inyección de Pruebas</button>
+      <button class="tab-btn active" onclick="switchTab('tab-monitoring')">📊 Pantalla 1: Monitoreo & IA</button>
+      <button class="tab-btn" onclick="switchTab('tab-relay')">🔌 Pantalla 2: Desconexión de Cargas</button>
+      <button class="tab-btn" onclick="switchTab('tab-textmining')">📝 Pantalla 3: Minería de Texto (Fallas)</button>
+      <button class="tab-btn" onclick="switchTab('tab-security')">🛡️ Pantalla 4: Ciberseguridad & Honeypot</button>
+      <button class="tab-btn" onclick="switchTab('tab-simulator')">🧪 Pantalla 5: Inyección de Pruebas</button>
     </nav>
 
-    <!-- TAB 1: MONITOREO EN TIEMPO REAL & MODELOS DE IA -->
+    <!-- PANTALLA 1: MONITOREO EN TIEMPO REAL & MODELOS DE IA -->
     <section id="tab-monitoring">
-      <!-- Tarjetas de Telemetría (Gauges) -->
       <div class="dashboard-grid">
         <div class="metric-card">
           <div class="metric-title">Tensión RMS</div>
@@ -111,7 +169,7 @@
       </div>
     </section>
 
-    <!-- TAB 2: DESCONEXIÓN AUTOMATIZADA DE CARGAS -->
+    <!-- PANTALLA 2: DESCONEXIÓN AUTOMATIZADA DE CARGAS -->
     <section id="tab-relay" style="display: none;">
       <div class="card">
         <div class="card-header">
@@ -146,7 +204,7 @@
       </div>
     </section>
 
-    <!-- TAB 3: MINERÍA DE TEXTO (BITÁCORAS DE FALLAS) -->
+    <!-- PANTALLA 3: MINERÍA DE TEXTO (BITÁCORAS DE FALLAS) -->
     <section id="tab-textmining" style="display: none;">
       <div class="card">
         <div class="card-header">
@@ -159,7 +217,6 @@
           Clasifica el nivel de severidad (Baja, Media, Alta, Crítica) de incidentes eléctricos no estructurados utilizando TF-IDF y un clasificador lineal calibrado.
         </p>
 
-        <!-- Botones de ejemplo rápido -->
         <div class="quick-samples">
           <span style="font-size: 0.8rem; color: var(--text-muted); align-self: center;">Ejemplos rápidos:</span>
           <div class="sample-chip" onclick="setSampleText('Cortocircuito trifásico franco en barraje principal con explosión y humo denso')">🔥 Cortocircuito Crítico</div>
@@ -171,7 +228,6 @@
         <textarea id="incidentInput" rows="3" placeholder="Escriba aquí el reporte técnico del incidente o bitácora de turno..."></textarea>
         <button class="btn btn-primary" onclick="analyzeIncidentText()">🔍 Analizar y Clasificar Severidad</button>
 
-        <!-- Resultado de Minería de Texto -->
         <div id="textMiningResult" style="margin-top: 20px; display: none; background: var(--bg-card); padding: 18px; border-radius: 8px; border-left: 4px solid var(--primary);">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <h4 id="resSeverityTitle" style="color: #fff; font-size: 1.1rem;">Severidad: Baja</h4>
@@ -182,7 +238,6 @@
         </div>
       </div>
 
-      <!-- Historial de Incidentes -->
       <div class="card">
         <div class="card-header">
           <div class="card-title">📋 Registro Histórico de Incidentes Analizados</div>
@@ -199,16 +254,14 @@
               </tr>
             </thead>
             <tbody id="incidentTableBody">
-              <!-- Se puebla dinámicamente -->
             </tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- TAB 4: CIBERSEGURIDAD, SYSLOG, SNMP & HONEYPOT -->
+    <!-- PANTALLA 4: CIBERSEGURIDAD, SYSLOG, SNMP & HONEYPOT -->
     <section id="tab-security" style="display: none;">
-      <!-- Panel de Ciberseguridad -->
       <div class="dashboard-grid">
         <div class="metric-card">
           <div class="metric-title">Trampas Honeypot Activas</div>
@@ -262,7 +315,6 @@
 
       <!-- SYSLOG & SNMP -->
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px;">
-        <!-- Syslog Box -->
         <div class="card">
           <div class="card-header">
             <div class="card-title">📜 Registro Syslog en Vivo (RFC 5424 - Puerto 514 UDP)</div>
@@ -272,7 +324,6 @@
           </div>
         </div>
 
-        <!-- SNMP MIB Box -->
         <div class="card">
           <div class="card-header">
             <div class="card-title">📡 Agente SNMP v2c (MIB Enterprise 1.3.6.1.4.1.58888)</div>
@@ -287,7 +338,6 @@
                 </tr>
               </thead>
               <tbody id="snmpTableBody">
-                <!-- Se puebla dinámicamente -->
               </tbody>
             </table>
           </div>
@@ -295,7 +345,7 @@
       </div>
     </section>
 
-    <!-- TAB 5: INYECCIÓN DE PRUEBAS / SIMULADOR -->
+    <!-- PANTALLA 5: INYECCIÓN DE PRUEBAS / SIMULADOR -->
     <section id="tab-simulator" style="display: none;">
       <div class="card">
         <div class="card-header">

@@ -29,6 +29,7 @@ from backend.routes.telemetry import telemetry_bp
 from backend.routes.actuators import actuators_bp
 from backend.routes.text_mining_routes import text_mining_bp
 from backend.routes.security_routes import security_bp
+from backend.routes.auth_routes import auth_bp
 from backend.routes.ingest_routes import ingest_bp
 from backend.routes.query_routes import query_bp
 from backend.services.load_control import load_control_bp
@@ -108,6 +109,7 @@ def create_app():
     app.register_blueprint(actuators_bp)
     app.register_blueprint(text_mining_bp)
     app.register_blueprint(security_bp)
+    app.register_blueprint(auth_bp)
     app.register_blueprint(ingest_bp)
     app.register_blueprint(query_bp)
     app.register_blueprint(load_control_bp)
