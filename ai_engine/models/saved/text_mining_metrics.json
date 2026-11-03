@@ -1,0 +1,73 @@
+{
+  "accuracy": 1.0,
+  "f1_score_macro": 1.0,
+  "f1_score_weighted": 1.0,
+  "classification_report": {
+    "Baja": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 15.0
+    },
+    "Media": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 15.0
+    },
+    "Alta": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 15.0
+    },
+    "Crítica": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 15.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 60.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 60.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      15,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      15,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      15,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      15
+    ]
+  ],
+  "total_samples": 240,
+  "train_samples": 180,
+  "test_samples": 60
+}
