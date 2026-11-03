@@ -1,0 +1,22 @@
+{
+  "knn": {
+    "n_neighbors": 2,
+    "weights": "uniform",
+    "metric": "euclidean",
+    "p": 1
+  },
+  "svm": {
+    "C": 50.0,
+    "kernel": "linear",
+    "gamma": "scale"
+  },
+  "neural_network": {
+    "hidden_layer_sizes": [
+      16
+    ],
+    "activation": "relu",
+    "alpha": 0.001,
+    "learning_rate_init": 0.01,
+    "max_iter": 300
+  }
+}

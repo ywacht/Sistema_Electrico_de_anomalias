@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EcoGrid AI — Plataforma Inteligente Gestora de Energía Eléctrica</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Chart.js para visualización de series de tiempo -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header Institucional -->
+    <header>
+      <div class="logo-section">
+        <h1>⚡ EcoGrid <span>AI</span></h1>
+        <p class="subtitle">Universidad Tecnológica de Calvillo (UTC) — Ingeniería en Tecnologías (7mo Cuatrimestre)</p>
+        <p class="subtitle" style="color: #60a5fa;">Monitoreo en Tiempo Real | Predicción de Picos | Desconexión de Cargas | Honeypot SCADA</p>
+      </div>
+      <div class="system-status">
+        <div class="badge badge-online">
+          <div class="badge-pulse"></div>
+          <span id="backendStatusText">Sistema Activo</span>
+        </div>
+        <div id="activePatternBadge" class="badge" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6;">
+          Patrón IA: Normal
+        </div>
+      </div>
+    </header>
+
+    <!-- Navegación de Pestañas -->
+    <nav class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab('tab-monitoring')">📊 Monitoreo Energético & IA</button>
+      <button class="tab-btn" onclick="switchTab('tab-relay')">🔌 Desconexión de Cargas</button>
+      <button class="tab-btn" onclick="switchTab('tab-textmining')">📝 Minería de Texto (Fallas)</button>
+      <button class="tab-btn" onclick="switchTab('tab-security')">🛡️ Ciberseguridad & Honeypot</button>
+      <button class="tab-btn" onclick="switchTab('tab-simulator')">🧪 Inyección de Pruebas</button>
+    </nav>
+
+    <!-- TAB 1: MONITOREO EN TIEMPO REAL & MODELOS DE IA -->
+    <section id="tab-monitoring">
+      <!-- Tarjetas de Telemetría (Gauges) -->
+      <div class="dashboard-grid">
+        <div class="metric-card">
+          <div class="metric-title">Tensión RMS</div>
+          <div class="metric-value"><span id="valVoltage">120.0</span> <span class="metric-unit">V</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Corriente RMS</div>
+          <div class="metric-value"><span id="valCurrent">5.40</span> <span class="metric-unit">A</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Potencia Activa</div>
+          <div class="metric-value"><span id="valPower">620.0</span> <span class="metric-unit">W</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Factor de Potencia</div>
+          <div class="metric-value"><span id="valPF">0.96</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Frecuencia</div>
+          <div class="metric-value"><span id="valFreq">60.0</span> <span class="metric-unit">Hz</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Energía Acumulada</div>
+          <div class="metric-value"><span id="valEnergy">0.145</span> <span class="metric-unit">kWh</span></div>
+        </div>
+      </div>
+
+      <!-- Gráfico de Series de Tiempo -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📈 Series de Tiempo de Potencia Activa (W) y Corriente (A)</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">Repositorio Cloud NoSQL con actualización cada 2s</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="energyChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Arquitectura de Modelos de IA -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🧠 Clasificación de Patrones con IA (Fundamentos de IA)</div>
+          <span class="badge" style="background: rgba(139, 92, 246, 0.2); color: #c084fc; border: 1px solid #8b5cf6;">Optimizado con Algoritmos Genéticos</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+          <div style="background: var(--bg-card); padding: 16px; border-radius: 8px;">
+            <h4 style="color: #60a5fa; margin-bottom: 8px;">Modelos Supervisados</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">
+              • <strong>Red Neuronal (MLP):</strong> Exactitud 100% | F1 1.000<br>
+              • <strong>KNN:</strong> Optimizado k=2 | F1 1.000<br>
+              • <strong>SVM:</strong> Kernel lineal/RBF | F1 1.000
+            </p>
+          </div>
+          <div style="background: var(--bg-card); padding: 16px; border-radius: 8px;">
+            <h4 style="color: #00d26a; margin-bottom: 8px;">Modelos No Supervisados</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">
+              • <strong>K-Means:</strong> 4 clusters de consumo eléctrico<br>
+              • <strong>SOM (Kohonen):</strong> Malla 4x4 topological clustering para descubrimiento de micro-fugas
+            </p>
+          </div>
+          <div style="background: var(--bg-card); padding: 16px; border-radius: 8px;">
+            <h4 style="color: #f59e0b; margin-bottom: 8px;">Predicción Instantánea</h4>
+            <div id="aiInferenceBox" style="font-size: 0.9rem; font-weight: 600; color: #fff; margin-top: 5px;">
+              Patrón: Normal | Desconexión: No requerida
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: DESCONEXIÓN AUTOMATIZADA DE CARGAS -->
+    <section id="tab-relay" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🔌 Estado del Actuador de Desconexión (Relé ESP32)</div>
+          <span id="relayModeBadge" class="badge" style="background: rgba(0, 210, 106, 0.15); color: #00d26a;">MODO: AUTOMÁTICO IA</span>
+        </div>
+        <div class="relay-panel">
+          <div class="relay-status-display">
+            <div id="breakerIcon" class="breaker-icon breaker-on">⚡</div>
+            <div>
+              <h3 id="relayStatusTitle" style="color: #fff; font-size: 1.3rem;">CARGA CONECTADA</h3>
+              <p id="relayReasonText" style="color: var(--text-muted); font-size: 0.85rem;">Operación nominal dentro de parámetros seguros</p>
+              <p style="color: #64748b; font-size: 0.75rem; margin-top: 4px;">Disparos totales acumulados: <strong id="tripCountVal">0</strong></p>
+            </div>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button id="btnReconnect" class="btn btn-primary" onclick="toggleRelay(1)">Reconectar Carga</button>
+            <button id="btnDisconnect" class="btn btn-danger" onclick="toggleRelay(0)">Desconectar Manualmente</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🛡️ Política de Corte Automático y Protección de Cargas</div>
+        </div>
+        <ul style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.7; padding-left: 20px;">
+          <li><strong>Disparo por Sobrecarga de IA:</strong> Si la Red Neuronal clasifica la telemetría como <em>Sobrecarga / Anomalía</em>, el backend emite orden de desconexión inmediata al ESP32.</li>
+          <li><strong>Disparo por Umbral Físico (>35A):</strong> El firmware del ESP32 ejecuta corte en hardware directo si la corriente excede 35.0A, protegiendo conductores sin depender de la red.</li>
+          <li><strong>Emisión Inmediata de Alerta Syslog & SNMP Trap:</strong> Ante cualquier apertura de relé, se genera un evento crítico hacia la infraestructura de monitoreo.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- TAB 3: MINERÍA DE TEXTO (BITÁCORAS DE FALLAS) -->
+    <section id="tab-textmining" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📝 Minería de Texto sobre Bitácoras de Mantenimiento y Fallas</div>
+          <span class="badge" style="background: rgba(0, 210, 106, 0.15); color: #00d26a; border: 1px solid #00d26a;">
+            Exactitud: 100% | F1-Score: 1.000
+          </span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">
+          Clasifica el nivel de severidad (Baja, Media, Alta, Crítica) de incidentes eléctricos no estructurados utilizando TF-IDF y un clasificador lineal calibrado.
+        </p>
+
+        <!-- Botones de ejemplo rápido -->
+        <div class="quick-samples">
+          <span style="font-size: 0.8rem; color: var(--text-muted); align-self: center;">Ejemplos rápidos:</span>
+          <div class="sample-chip" onclick="setSampleText('Cortocircuito trifásico franco en barraje principal con explosión y humo denso')">🔥 Cortocircuito Crítico</div>
+          <div class="sample-chip" onclick="setSampleText('Termografía revela punto caliente crítico a 95°C en empalme de fase C')">⚠️ Sobrecalentamiento Alto</div>
+          <div class="sample-chip" onclick="setSampleText('Zumbido y vibración moderada en contactor del compresor de aire')">⚡ Zumbido Medio</div>
+          <div class="sample-chip" onclick="setSampleText('Mantenimiento preventivo rutinario y limpieza de polvo en gabinete de control')">✅ Mantenimiento Bajo</div>
+        </div>
+
+        <textarea id="incidentInput" rows="3" placeholder="Escriba aquí el reporte técnico del incidente o bitácora de turno..."></textarea>
+        <button class="btn btn-primary" onclick="analyzeIncidentText()">🔍 Analizar y Clasificar Severidad</button>
+
+        <!-- Resultado de Minería de Texto -->
+        <div id="textMiningResult" style="margin-top: 20px; display: none; background: var(--bg-card); padding: 18px; border-radius: 8px; border-left: 4px solid var(--primary);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h4 id="resSeverityTitle" style="color: #fff; font-size: 1.1rem;">Severidad: Baja</h4>
+            <span id="resConfidence" style="font-size: 0.85rem; color: var(--text-muted);">Confianza: 98%</span>
+          </div>
+          <p id="resAction" style="color: #cbd5e1; font-size: 0.9rem; margin-top: 8px;"></p>
+          <div id="resKeywords" style="margin-top: 10px; font-size: 0.8rem; color: #94a3b8;"></div>
+        </div>
+      </div>
+
+      <!-- Historial de Incidentes -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 Registro Histórico de Incidentes Analizados</div>
+        </div>
+        <div class="table-responsive">
+          <table id="incidentTable">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Texto del Reporte</th>
+                <th>Severidad</th>
+                <th>Confianza</th>
+                <th>Acción Recomendada</th>
+              </tr>
+            </thead>
+            <tbody id="incidentTableBody">
+              <!-- Se puebla dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: CIBERSEGURIDAD, SYSLOG, SNMP & HONEYPOT -->
+    <section id="tab-security" style="display: none;">
+      <!-- Panel de Ciberseguridad -->
+      <div class="dashboard-grid">
+        <div class="metric-card">
+          <div class="metric-title">Trampas Honeypot Activas</div>
+          <div class="metric-value" style="color: #f59e0b;"><span id="valHoneypotHits">0</span> <span class="metric-unit">atrapados</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Peticiones DoS Analizadas</div>
+          <div class="metric-value"><span id="valDosAnalyzed">0</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">IPs en Lista Negra</div>
+          <div class="metric-value" style="color: #ef4444;"><span id="valBlockedIps">0</span> <span class="metric-unit">IPs</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Eventos Syslog (RFC 5424)</div>
+          <div class="metric-value"><span id="valSyslogCount">0</span> <span class="metric-unit">logs</span></div>
+        </div>
+      </div>
+
+      <!-- HONEYPOT SCADA & IOT PANEL -->
+      <div class="card" style="border-left: 4px solid #f59e0b;">
+        <div class="card-header">
+          <div class="card-title">🍯 Señuelo Cibernético Honeypot (SCADA & Actuadores ESP32)</div>
+          <button class="btn btn-danger" onclick="simulateHoneypotIntrusion()">🎯 Simular Intrusión Atacante</button>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 15px;">
+          El Honeypot emula falsas consolas administrativas de control de subestaciones y actuadores ESP32 en rutas como 
+          <code>/admin</code>, <code>/scada/admin</code> y <code>/firmware/update</code>. Cualquier atacante que explore estas rutas
+          es <strong>atrapado inmediatamente</strong>, registrado con Syslog y añadido a la lista negra del firewall.
+        </p>
+
+        <h4 style="color: #fff; margin-bottom: 10px; font-size: 0.95rem;">Últimas Intrusiones Atrapadas por el Honeypot:</h4>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>IP Atacante</th>
+                <th>Ruta Señuelo</th>
+                <th>Método</th>
+                <th>User-Agent / Payload</th>
+                <th>Acción de Seguridad</th>
+              </tr>
+            </thead>
+            <tbody id="honeypotTableBody">
+              <tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Sin intrusiones detectadas recientemente.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SYSLOG & SNMP -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px;">
+        <!-- Syslog Box -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📜 Registro Syslog en Vivo (RFC 5424 - Puerto 514 UDP)</div>
+          </div>
+          <div id="syslogConsole" class="log-box">
+            <div class="log-entry" style="color: #00d26a;">[SYSLOG INIT] Escuchando eventos del sistema y actuadores...</div>
+          </div>
+        </div>
+
+        <!-- SNMP MIB Box -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📡 Agente SNMP v2c (MIB Enterprise 1.3.6.1.4.1.58888)</div>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Objeto MIB</th>
+                  <th>OID</th>
+                  <th>Valor Actual</th>
+                </tr>
+              </thead>
+              <tbody id="snmpTableBody">
+                <!-- Se puebla dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: INYECCIÓN DE PRUEBAS / SIMULADOR -->
+    <section id="tab-simulator" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🧪 Banco de Pruebas e Inyección de Anomalías Eléctricas</div>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+          Utilice estos controles para simular la recepción instantánea de telemetría desde los nodos ESP32 y verificar cómo reaccionan los modelos de IA y el relé de desconexión:
+        </p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px;">
+          <button class="btn btn-secondary" onclick="injectTelemetry('normal')" style="border-left: 4px solid var(--primary); text-align: left; padding: 15px;">
+            <strong style="color: #fff; display: block;">1. Consumo Normal</strong>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">120V, 5.2A, FP 0.96 (Operación estándar)</span>
+          </button>
+          <button class="btn btn-secondary" onclick="injectTelemetry('pico')" style="border-left: 4px solid var(--warning); text-align: left; padding: 15px;">
+            <strong style="color: #fff; display: block;">2. Pico de Demanda</strong>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">118V, 24.5A, FP 0.91 (Carga elevada)</span>
+          </button>
+          <button class="btn btn-secondary" onclick="injectTelemetry('sobrecarga')" style="border-left: 4px solid var(--danger); text-align: left; padding: 15px;">
+            <strong style="color: #fff; display: block;">3. Sobrecarga Crítica</strong>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">112V, 42.0A (¡Dispara corte de relé!)</span>
+          </button>
+          <button class="btn btn-secondary" onclick="injectTelemetry('fuga')" style="border-left: 4px solid #8b5cf6; text-align: left; padding: 15px;">
+            <strong style="color: #fff; display: block;">4. Fuga / Consumo Parásito</strong>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">121V, 1.8A, FP 0.62 (Bajo factor potencia)</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+{
+  "knn": {
+    "accuracy": 1.0,
+    "f1_score": 1.0,
+    "report": {
+      "Normal": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 150.0
+      },
+      "Pico de Demanda": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 150.0
+      },
+      "Sobrecarga / Anomal\u00eda": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 150.0
+      },
+      "Fuga / Consumo Par\u00e1sito": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 150.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 600.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 600.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        150,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        150,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        150,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        150
+      ]
+    ]
+  },
+  "svm": {
+    "accuracy": 1.0,
+    "f1_score": 1.0,
+    "report": {
+      "Normal": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 150.0
+      },
+      "Pico de Demanda": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 150.0
+      },
+      "Sobrecarga / Anomal\u00eda": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 150.0
+      },
+      "Fuga / Consumo Par\u00e1sito": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 150.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 600.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 600.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        150,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        150,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        150,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        150
+      ]
+    ]
+  },
+  "neural_network": {
+    "accuracy": 1.0,
+    "f1_score": 1.0,
+    "report": {
+      "Normal": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 150.0
+      },
+      "Pico de Demanda": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 150.0
+      },
+      "Sobrecarga / Anomal\u00eda": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 150.0
+      },
+      "Fuga / Consumo Par\u00e1sito": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 150.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 600.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 600.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        150,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        150,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        150,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        150
+      ]
+    ]
+  }
+}
