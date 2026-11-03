@@ -34,7 +34,108 @@ body {
   margin: 0 auto;
 }
 
-/* Header */
+/* ============================================================== */
+/* PANTALLA DE LOGIN (AUTENTICACIÓN)                             */
+/* ============================================================== */
+.login-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 85vh;
+}
+
+.login-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 40px;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.login-logo {
+  font-size: 3rem;
+  margin-bottom: 5px;
+}
+
+.login-header h2 {
+  font-size: 1.8rem;
+  color: #fff;
+  font-weight: 700;
+}
+
+.login-header h2 span {
+  color: var(--primary);
+}
+
+.login-institution {
+  color: var(--info);
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.login-desc {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.login-error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid var(--danger);
+  color: #f87171;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-top: 15px;
+  text-align: center;
+}
+
+.login-footer {
+  margin-top: 25px;
+  text-align: center;
+  border-top: 1px solid var(--border-color);
+  padding-top: 15px;
+}
+
+.user-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+}
+
+/* ============================================================== */
+/* HEADER & NAVEGACIÓN                                            */
+/* ============================================================== */
 header {
   display: flex;
   justify-content: space-between;
@@ -69,7 +170,8 @@ header {
 .system-status {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .badge {
@@ -110,6 +212,7 @@ header {
   margin-bottom: 24px;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 10px;
+  flex-wrap: wrap;
 }
 
 .tab-btn {
@@ -271,7 +374,7 @@ header {
 .btn-secondary:hover { background: #27334d; }
 
 /* Text Area and Forms */
-textarea, input[type="text"] {
+textarea, input[type="text"], input[type="password"] {
   width: 100%;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -279,10 +382,9 @@ textarea, input[type="text"] {
   padding: 12px;
   color: #fff;
   font-size: 0.95rem;
-  margin-bottom: 12px;
 }
 
-textarea:focus, input[type="text"]:focus {
+textarea:focus, input[type="text"]:focus, input[type="password"]:focus {
   outline: none;
   border-color: var(--primary);
 }

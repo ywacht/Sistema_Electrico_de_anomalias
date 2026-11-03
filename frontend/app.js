@@ -5,17 +5,97 @@ const chartMaxPoints = 25;
 
 // Inicialización de la aplicación
 document.addEventListener("DOMContentLoaded", () => {
-  initChart();
-  refreshAllData();
-  loadIncidentHistory();
+  checkAuthSession();
 
   // Polling periódico cada 2.5 segundos
   setInterval(() => {
-    refreshTelemetry();
-    refreshRelay();
-    refreshSecurity();
+    if (isAuthenticated()) {
+      refreshTelemetry();
+      refreshRelay();
+      refreshSecurity();
+    }
   }, 2500);
 });
+
+// -------------------------------------------------------------
+// CONTROL DE AUTENTICACIÓN (LOGIN / LOGOUT)
+// -------------------------------------------------------------
+function isAuthenticated() {
+  return !!localStorage.getItem("ecogrid_user");
+}
+
+function checkAuthSession() {
+  const savedUser = localStorage.getItem("ecogrid_user");
+  const loginScreen = document.getElementById("loginScreen");
+  const appScreen = document.getElementById("appScreen");
+
+  if (savedUser) {
+    try {
+      const user = JSON.parse(savedUser);
+      document.getElementById("userNameDisplay").textContent = user.name || "Operador";
+      document.getElementById("userRoleDisplay").textContent = user.role || "Ingeniero SCADA";
+      loginScreen.style.display = "none";
+      appScreen.style.display = "block";
+
+      if (!energyChart) initChart();
+      refreshAllData();
+      loadIncidentHistory();
+    } catch (e) {
+      handleLogout();
+    }
+  } else {
+    loginScreen.style.display = "flex";
+    appScreen.style.display = "none";
+  }
+}
+
+async function handleLoginSubmit(event) {
+  event.preventDefault();
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const errorEl = document.getElementById("loginErrorMsg");
+
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.status === "success") {
+      localStorage.setItem("ecogrid_user", JSON.stringify(data.user));
+      localStorage.setItem("ecogrid_token", data.token);
+      errorEl.style.display = "none";
+      checkAuthSession();
+    } else {
+      errorEl.textContent = data.message || "Credenciales incorrectas";
+      errorEl.style.display = "block";
+    }
+  } catch (err) {
+    // Modo offline / fallback
+    const mockUser = {
+      name: "Ing. Operador UTC",
+      role: "Operador de Subestación",
+      email: email,
+    };
+    localStorage.setItem("ecogrid_user", JSON.stringify(mockUser));
+    checkAuthSession();
+  }
+}
+
+function quickLoginDemo() {
+  document.getElementById("loginEmail").value = "operador@utc.edu.mx";
+  document.getElementById("loginPassword").value = "utc7mo2026";
+  const fakeEvent = { preventDefault: () => {} };
+  handleLoginSubmit(fakeEvent);
+}
+
+function handleLogout() {
+  localStorage.removeItem("ecogrid_user");
+  localStorage.removeItem("ecogrid_token");
+  checkAuthSession();
+}
 
 // -------------------------------------------------------------
 // CONTROL DE PESTAÑAS (TABS)
