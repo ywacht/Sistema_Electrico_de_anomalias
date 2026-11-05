@@ -8,8 +8,12 @@ __pycache__/
 *.sqlite
 *.sqlite3
 
-# Environment variables
+# Environment variables (Credenciales protegidas - NUNCA se suben a Git)
 .env
+.env.local
+.env.*.local
+*.env
+!.env.example
 .venv/
 env/
 venv/
