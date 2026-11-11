@@ -3,11 +3,11 @@ EcoGrid AI - Minería de Texto para Reportes de Fallas y Bitácoras Eléctricas
 Asignatura: Minería de Texto (IA)
 Universidad Tecnológica de Calvillo (UTC)
 
-Clasificación de incidentes no estructurados en 4 niveles de severidad:
-- Baja: Mantenimientos rutinarios, inspecciones preventivas, ajustes menores.
-- Media: Variaciones intermitentes, vibraciones leves, ruido eléctrico, armónicos moderados.
-- Alta: Sobrecalentamiento significativo, fallas de relés de protección, desbalances severos.
-- Crítica: Arcos eléctricos, conatos de incendio, cortocircuitos trifásicos, explosiones.
+Clasificación de incidentes no estructurados en 3 niveles de severidad
+(mismo esquema acordado para el resto del proyecto: contratos JSON y notebook):
+- Crítico: arcos eléctricos, explosiones, incendios, cortocircuitos severos, fallas totales.
+- Moderado: fluctuaciones de voltaje, sobrecalentamiento moderado, ruido o vibración anómala.
+- Leve: mantenimientos preventivos, inspecciones de rutina, hallazgos sin relevancia.
 
 Reporta métricas de exactitud (Accuracy) y F1-Score.
 """
@@ -20,81 +20,64 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, f1_score
 
 
-SEVERITY_LEVELS = ["Baja", "Media", "Alta", "Crítica"]
+SEVERITY_LEVELS = ["Crítico", "Moderado", "Leve"]
 
-# Base enriquecida de incidentes para entrenamiento robusto
+# Base de incidentes (mismo corpus/vocabulario usado en el notebook de Minería de Texto)
 BASE_INCIDENTS = {
-    "Baja": [
-        "Inspección visual periódica de barrajes y limpieza de polvo en tablero principal sin novedades.",
-        "Reemplazo programado de fusibles de maniobra y ajuste preventivo de tornillería en bornera.",
-        "Monitoreo rutinario de banco de baterías para UPS, niveles de electrolito correctos.",
-        "Revisión semestral de puesta a tierra, resistencia medida en 4.2 ohms dentro de norma oficial.",
-        "Mantenimiento preventivo ordinario en tablero secundario de iluminación y contactos.",
-        "Limpieza de filtros de aire y verificación de ventilación en gabinete de control.",
-        "Lectura rutinaria mensual de medidores fiscales de energía sin registrar desviaciones.",
-        "Cambio de focos piloto indicadores de presencia de fase en panel de distribución.",
-        "Ajuste de par de apriete en zapatas de acometida según manual de fabricante.",
-        "Etiquetado y peinado de cableado de control en canaleta de tablero de transferencia.",
-        "Inspección periódica del aislamiento externo de transformador tipo pedestal.",
-        "Prueba preventiva sin carga de la planta de emergencia a diésel por 15 minutos.",
-        "Reemplazo de cubiertas acrílicas de protección contra contacto accidental en tablero.",
-        "Verificación de señalización de seguridad y señalética de peligro alta tensión.",
-        "Registro de lecturas de tensión y corriente en bitácora de turno matutino.",
+    "Crítico": [
+        "Explosión parcial en el transformador de la subestación norte, personal evacuado de inmediato por seguridad.",
+        "Se detectó arco eléctrico visible en la batería de respaldo, requiere desconexión inmediata.",
+        "Explosión parcial en el sistema de puesta a tierra, personal evacuado de inmediato por seguridad.",
+        "Se detecta fuga de aceite dieléctrico junto con sobrecalentamiento extremo en el regulador de voltaje, posible explosión inminente.",
+        "Se reporta el generador de respaldo con sobrecalentamiento extremo y olor a quemado de forma intermitente desde ayer, riesgo inminente de incendio.",
+        "Se detectó arco eléctrico visible en el aislador de la línea aérea, requiere desconexión inmediata.",
+        "Se reporta el sistema de puesta a tierra con sobrecalentamiento extremo y olor a quemado de forma intermitente desde ayer, riesgo inminente de incendio.",
+        "El regulador de voltaje sufrió daño estructural grave tras descarga eléctrica, riesgo para el personal.",
+        "Sobrecarga crítica en el motor del compresor de la planta dejó sin energía a más de 500 usuarios por 45 minutos.",
+        "Se reporta el medidor inteligente del sector residencial con sobrecalentamiento extremo y olor a quemado en las últimas 24 horas, riesgo inminente de incendio.",
+        "El interruptor automático de línea 3 presenta humo visible y chispas, se activó protocolo de emergencia.",
+        "Se detectó arco eléctrico visible en la torre de alta tensión sector sur, requiere desconexión inmediata.",
+        "Explosión parcial en el relé de protección, personal evacuado de inmediato por seguridad.",
+        "El banco de capacitores presenta humo visible y chispas, se activó protocolo de emergencia.",
+        "Falla total en el transformador de distribución zona industrial: sin suministro eléctrico en toda la zona durante el turno nocturno.",
     ],
-    "Media": [
-        "Zumbido anormal y vibración moderada en contactor electromagnético del compresor 3.",
-        "Fluctuación intermitente de tensión de 120V a 108V al arrancar molino principal.",
-        "Lectura de armónicos THD en corriente del 14% en variador de velocidad tablero 4.",
-        "Disparo esporádico del guardamotor por descalibración del dial térmico durante turno nocturno.",
-        "Falso contacto intermitente en borna de neutro causando parpadeo en luminarias industriales.",
-        "Elevación moderada de temperatura en borne de interruptor termomagnético marcado a 48°C.",
-        "Desgaste incipiente de escobillas en motor sincrónico de ventilación auxiliar.",
-        "Presión diferencial baja en sistema de enfriamiento de transformador seco de 75kVA.",
-        "Disparo por sobrecorriente transitoria al conectar banco de condensadores desintonizado.",
-        "Humedad detectada en canalización subterránea de alimentación a caseta de bombeo.",
-        "Desviación menor del factor de potencia cayendo a 0.82 durante arranque de enfriadores.",
-        "Oscilación periódica de frecuencia entre 59.6 y 60.3 Hz en barra secundaria.",
-        "Fuga leve de grasa en chumaceras del motor de trituración secundaria.",
-        "Alarma de advertencia por sobrecarga leve del 108% en alimentador B2.",
-        "Ruido de conmutación en tiristores del banco de compensación estática de reactivos.",
+    "Moderado": [
+        "La línea de transmisión 1 tuvo una caída de voltaje momentánea en las últimas 24 horas, se restableció sin intervención.",
+        "Se registran fluctuaciones de voltaje en el sistema de puesta a tierra, consumo elevado respecto al promedio.",
+        "Temperatura por encima de lo normal en el banco de capacitores, sin señales de daño estructural aún.",
+        "El generador de respaldo muestra desgaste visible en los contactos, aún operativo pero requiere revisión pronto.",
+        "El cableado subterráneo de la zona comercial muestra desgaste visible en los contactos, aún operativo pero requiere revisión pronto.",
+        "La línea de transmisión 1 muestra desgaste visible en los contactos, aún operativo pero requiere revisión pronto.",
+        "Consumo elevado y sostenido en la subestación eléctrica central desde hace 6 horas, fuera del rango esperado.",
+        "Ruido anómalo (zumbido fuerte) detectado en el banco de capacitores durante la inspección rutinaria.",
+        "El interruptor automático de línea 3 muestra desgaste visible en los contactos, aún operativo pero requiere revisión pronto.",
+        "Temperatura por encima de lo normal en el medidor inteligente del sector residencial, sin señales de daño estructural aún.",
+        "El medidor inteligente del sector residencial muestra desgaste visible en los contactos, aún operativo pero requiere revisión pronto.",
+        "Corrosión visible en las conexiones de el interruptor automático de línea 3, funcionamiento aún estable.",
+        "La torre de alta tensión sector sur muestra desgaste visible en los contactos, aún operativo pero requiere revisión pronto.",
+        "El transformador de distribución zona industrial muestra desgaste visible en los contactos, aún operativo pero requiere revisión pronto.",
+        "El motor del compresor de la planta muestra desgaste visible en los contactos, aún operativo pero requiere revisión pronto.",
     ],
-    "Alta": [
-        "Termografía revela punto caliente crítico a 92°C en empalme de fase C del alimentador principal.",
-        "Falla de disparo en relé de sobrecorriente 50/51, línea de producción operando sin protección.",
-        "Desbalance severo de fases mayor al 35% con recalentamiento en devanados del motor de 150HP.",
-        "Pérdida de aislamiento dieléctrico en cable de media tensión 13.8kV, resistencia en 15 megaohms.",
-        "Sobrecorriente continua del 140% por atasco mecánico, disparo demorado de la protección principal.",
-        "Fuga a tierra de 8.5 amperios detectada en barraje de distribución general de planta.",
-        "Goteo de aceite dieléctrico en empaque de transformador principal de potencia de 500kVA.",
-        "Bloqueo del actuador mecánico del disyuntor en vacío, incapacidad de corte remoto.",
-        "Falla en el regulador automático de voltaje (AVR) provocando sobretensión sostenida de 145V.",
-        "Disparo por falla a tierra intermitente con olor a baquelita quemada en CCM 2.",
-        "Calentamiento excesivo a 105°C en cuchillas desconectadoras de subestación compacta.",
-        "Disparo reiterado del interruptor de potencia por sobretemperatura en bobina de disparo.",
-        "Falla en la protección diferencial de línea 87L detectada en prueba de inyección secundaria.",
-        "Deterioro grave de terminales de potencia por corrosión galvánica severa en cuarto húmedo.",
-        "Sobrecarga prolongada al 125% con humo ligero saliendo de la ventilación del transformador.",
-    ],
-    "Crítica": [
-        "Explosión por arco eléctrico en celda de media tensión con expulsión de gases y humo denso.",
-        "Cortocircuito trifásico franco en barraje principal, disyuntor general abierto por disparo instantáneo.",
-        "Conato de incendio activo en banco de condensadores con derretimiento de aisladores.",
-        "Disparo total de subestación por falla catastrófica de transformador con derrame de aceite caliente.",
-        "Contacto accidental con barra energizada de 480V con quemaduras y apertura de seccionadores de emergencia.",
-        "Ruptura dieléctrica violenta en boquilla de alta tensión con caída de fases a tierra.",
-        "Incendio en canalización principal de cables con emisión de vapores tóxicos en cuarto de control.",
-        "Falla simultánea de protecciones diferenciales y disparo general por cortocircuito no despejado.",
-        "Explosión de celda de seccionamiento por descarga atmosférica sin supresor TVSS operativo.",
-        "Colapso total de acometida por caída de poste y corte transversal de cables conductores vivos.",
-        "Arco eléctrico masivo en barra colectora principal causando apagón total en planta industrial.",
-        "Explosión violenta de transformador de potencial TP de 23kV con proyección de fragmentos.",
-        "Incendio descontrolado en cuarto de interruptores de potencia por sobrecalentamiento extremo.",
-        "Flashover en aisladores de entrada de subestación provocando caída del suministro general.",
-        "Cortocircuito bifásico franco con fusión de conductores de cobre en acometida de fuerza.",
+    "Leve": [
+        "Lectura ligeramente fuera de rango en el tablero de distribución del edificio B, dentro de tolerancia aceptable.",
+        "Pequeña acumulación de polvo en la línea de transmisión 2, se realizó limpieza sin incidentes.",
+        "Se ajustó un tornillo flojo en la batería de respaldo durante inspección programada.",
+        "El interruptor automático de línea 3 registra variación mínima de voltaje, considerada normal para la operación.",
+        "Inspección visual de el motor del compresor de la planta no encontró anomalías, se continúa con calendario normal.",
+        "Se reemplazó un fusible preventivo en la batería de respaldo, sin incidencia en el servicio.",
+        "El tablero de distribución del edificio B registra variación mínima de voltaje, considerada normal para la operación.",
+        "Mantenimiento preventivo realizado en la línea de transmisión 1 sin hallazgos relevantes.",
+        "Se ajustó un tornillo flojo en el regulador de voltaje durante inspección programada.",
+        "Limpieza de rutina en el relé de protección, polvo acumulado, sin afectación al funcionamiento.",
+        "Chequeo de rutina en la subestación eléctrica central: todos los parámetros dentro de lo esperado.",
+        "Revisión rutinaria de el sistema de puesta a tierra sin hallazgos graves, equipo en condiciones normales.",
+        "Limpieza de rutina en el sistema de puesta a tierra, polvo acumulado, sin afectación al funcionamiento.",
+        "Se reemplazó un fusible preventivo en la línea de transmisión 1, sin incidencia en el servicio.",
+        "Inspección visual de el medidor inteligente del sector residencial no encontró anomalías, se continúa con calendario normal.",
     ],
 }
 
@@ -123,30 +106,48 @@ class IncidentTextMiningClassifier:
         self.metrics = {}
 
     def build_dataset(self):
-        """Genera dataset expandido con variantes semánticas y de orden."""
+        """
+        Genera dataset expandido con variantes semánticas y de orden.
+
+        Cada bitácora base se acompaña de un `group_id`: las 4 variantes que
+        se generan a partir de ella (original + 3 prefijos) comparten ese id.
+        Esto permite separar train/test por GRUPO en vez de por fila suelta,
+        para que variantes casi idénticas de una misma bitácora nunca queden
+        repartidas entre entrenamiento y prueba (lo que antes inflaba la
+        exactitud de forma artificial).
+        """
         texts = []
         labels = []
+        groups = []
 
+        group_id = 0
         for severity, sentences in BASE_INCIDENTS.items():
             for s in sentences:
-                cleaned = clean_spanish_text(s)
-                texts.append(cleaned)
-                labels.append(severity)
-                texts.append(clean_spanish_text(f"Reporte de turno: {s}"))
-                labels.append(severity)
-                texts.append(clean_spanish_text(f"Atención en línea: {s}"))
-                labels.append(severity)
-                texts.append(clean_spanish_text(f"Incidente registrado en subestación: {s}"))
-                labels.append(severity)
+                variantes = [
+                    s,
+                    f"Reporte de turno: {s}",
+                    f"Atención en línea: {s}",
+                    f"Incidente registrado en subestación: {s}",
+                ]
+                for variante in variantes:
+                    texts.append(clean_spanish_text(variante))
+                    labels.append(severity)
+                    groups.append(group_id)
+                group_id += 1
 
-        return texts, labels
+        return texts, labels, groups
 
     def train_and_evaluate(self, test_size=0.25, random_state=42):
         """Entrena el clasificador y calcula exactitud y F1-score."""
-        texts, labels = self.build_dataset()
-        X_train, X_test, y_train, y_test = train_test_split(
-            texts, labels, test_size=test_size, random_state=random_state, stratify=labels
-        )
+        texts, labels, groups = self.build_dataset()
+
+        splitter = GroupShuffleSplit(n_splits=1, test_size=test_size, random_state=random_state)
+        train_idx, test_idx = next(splitter.split(texts, labels, groups=groups))
+
+        X_train = [texts[i] for i in train_idx]
+        X_test = [texts[i] for i in test_idx]
+        y_train = [labels[i] for i in train_idx]
+        y_test = [labels[i] for i in test_idx]
 
         self.pipeline = Pipeline([
             ("tfidf", TfidfVectorizer(
@@ -181,6 +182,7 @@ class IncidentTextMiningClassifier:
             "total_samples": len(texts),
             "train_samples": len(X_train),
             "test_samples": len(X_test),
+            "split_strategy": "GroupShuffleSplit por bitácora base (evita fuga entre variantes)",
         }
 
         return self.metrics
@@ -229,10 +231,9 @@ class IncidentTextMiningClassifier:
         keywords = [w for w in words if len(w) > 4][:6]
 
         recommendations = {
-            "Baja": "Continuar con el programa preventivo habitual. No requiere interrupción del suministro.",
-            "Media": "Programar inspección en el próximo cambio de turno. Monitorear vibración y temperatura.",
-            "Alta": "Alerta operativa. Coordinar mantenimiento correctivo prioritario y redistribuir carga.",
-            "Crítica": "ACCIÓN DE EMERGENCIA. Ejecutar desconexión inmediata de cargas y aislar sector afectado.",
+            "Crítico": "ACCIÓN DE EMERGENCIA. Ejecutar desconexión inmediata de cargas y aislar sector afectado.",
+            "Moderado": "Programar inspección en el próximo cambio de turno. Monitorear vibración y temperatura.",
+            "Leve": "Continuar con el programa preventivo habitual. No requiere interrupción del suministro.",
         }
 
         return {
@@ -243,5 +244,5 @@ class IncidentTextMiningClassifier:
             "class_probabilities": prob_dict,
             "keywords": keywords,
             "recommended_action": recommendations.get(predicted_severity, ""),
-            "requires_shutdown": predicted_severity in ["Alta", "Crítica"],
+            "requires_shutdown": predicted_severity == "Crítico",
         }

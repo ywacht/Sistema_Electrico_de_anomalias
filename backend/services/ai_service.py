@@ -67,7 +67,7 @@ class AIService:
         if not self.text_mining_loaded:
             return {
                 "input_text": text,
-                "predicted_severity": "Media",
+                "predicted_severity": "Moderado",
                 "confidence": 0.70,
                 "recommended_action": "Modelo no cargado. Revisión técnica manual recomendada.",
                 "requires_shutdown": False,

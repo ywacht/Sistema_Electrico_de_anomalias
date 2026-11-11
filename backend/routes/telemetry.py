@@ -6,8 +6,9 @@ Universidad Tecnológica de Calvillo (UTC)
 
 from flask import Blueprint, request, jsonify
 from backend.database import db_repo
-from backend.services.ai_service import ai_service
-from backend.services.disconnection_service import disconnection_service
+from backend.servises.ai_service import ai_service
+from backend.servises.disconnection_service import disconnection_service
+from backend.servises.synthetic_enrichment import enrich_telemetry
 from security.snmp_service import snmp_agent
 from security.syslog_service import syslog_client, SyslogFacility, SyslogSeverity
 
@@ -19,21 +20,51 @@ def ingest_telemetry():
     """
     Ingestión de datos de telemetría de alta frecuencia provenientes de ESP32 o simuladores.
     Ejecuta en línea:
-    1. Inferencia del modelo de IA sobre patrones de consumo.
-    2. Evaluación de corte automático si detecta sobrecarga peligrosa.
-    3. Persistencia en el repositorio no relacional de series de tiempo.
-    4. Actualización de variables MIB de SNMP.
+    1. Enriquecimiento sintético si la lectura es parcial (sensor de corriente único).
+    2. Inferencia del modelo de IA sobre patrones de consumo.
+    3. Evaluación de corte automático si detecta sobrecarga peligrosa.
+    4. Persistencia en el repositorio no relacional de series de tiempo.
+    5. Actualización de variables MIB de SNMP.
     """
     data = request.get_json(silent=True) or {}
     device_id = data.get("device_id", "esp32_sensor_01")
 
+    # MÓDULO TEMPORAL: Enriquecimiento sintético para nodo con sensor único de corriente (ACS712)
+    # Si la lectura no trae el vector completo, rellenar sintéticamente campos ausentes
+    missing_fields = [f for f in ("voltage", "power_factor", "frequency", "thd", "temperature") if f not in data or data[f] is None]
+    if missing_fields:
+        data = enrich_telemetry(data)
+
     # Extraer variables eléctricas
-    voltage = float(data.get("voltage", 120.0))
-    current = float(data.get("current", 0.0))
-    power_factor = float(data.get("power_factor", 0.95))
-    frequency = float(data.get("frequency", 60.0))
-    thd = float(data.get("thd", 3.0))
-    temperature = float(data.get("temperature", 28.0))
+    try:
+        current = float(data.get("current", 0.0))
+    except (ValueError, TypeError):
+        current = 0.0
+
+    try:
+        voltage = float(data.get("voltage", 120.0))
+    except (ValueError, TypeError):
+        voltage = 120.0
+
+    try:
+        power_factor = float(data.get("power_factor", 0.95))
+    except (ValueError, TypeError):
+        power_factor = 0.95
+
+    try:
+        frequency = float(data.get("frequency", 60.0))
+    except (ValueError, TypeError):
+        frequency = 60.0
+
+    try:
+        thd = float(data.get("thd", 3.0))
+    except (ValueError, TypeError):
+        thd = 3.0
+
+    try:
+        temperature = float(data.get("temperature", 28.0))
+    except (ValueError, TypeError):
+        temperature = 28.0
 
     # Cálculo derivado de potencia si no viene especificada
     active_power = float(data.get("active_power", voltage * current * power_factor))
@@ -81,6 +112,7 @@ def ingest_telemetry():
         "relay_state": relay_info["state"],
         "pattern_class": pattern_class,
         "should_disconnect": should_disconnect,
+        "synthetic_enrichment": data.get("_synthetic_enrichment", False),
     }
     db_repo.insert_telemetry(payload_to_store)
 
@@ -99,6 +131,8 @@ def ingest_telemetry():
         "relay_mode": relay_info["mode"],
         "ai_evaluation": ai_result,
         "stored": True,
+        "synthetic_enrichment": data.get("_synthetic_enrichment", False),
+        "enriched_fields": data.get("_enriched_fields", []),
     }), 201
 
 
