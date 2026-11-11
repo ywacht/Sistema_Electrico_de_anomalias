@@ -5,7 +5,7 @@ Universidad Tecnológica de Calvillo (UTC)
 """
 
 from flask import Blueprint, request, jsonify
-from backend.servises.disconnection_service import disconnection_service
+from backend.services.disconnection_service import disconnection_service
 
 actuators_bp = Blueprint("actuators", __name__, url_prefix="/api/actuators")
 

@@ -1,13 +1,3 @@
-"""
-EcoGrid AI - Repositorio No Relacional para Series de Tiempo en la Nube
-Asignatura: Bases de Datos en la Nube (SW)
-Universidad Tecnológica de Calvillo (UTC)
-
-Soporta:
-- MongoDB Atlas / Cloud NoSQL con Time Series Collections
-- Fallback local embebido para ejecución autónoma sin dependencias externas obligatorias
-- Índices temporales y agregaciones masivas de consumo energético (kWh, V, I, P)
-"""
 
 import os
 import time
@@ -20,10 +10,6 @@ load_dotenv()
 
 
 class TimeSeriesCloudRepository:
-    """
-    Gestor de base de datos no relacional para ingestión masiva de lecturas
-    de consumo eléctrico y eventos de seguridad.
-    """
 
     def __init__(self):
         self.mongo_uri = os.getenv("MONGO_URI", "")
