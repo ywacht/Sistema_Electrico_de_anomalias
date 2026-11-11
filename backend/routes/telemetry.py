@@ -1,14 +1,8 @@
-"""
-EcoGrid AI - Rutas de Telemetría Eléctrica e Ingestión
-Asignatura: Bases de Datos en la Nube (SW) & Fundamentos de IA
-Universidad Tecnológica de Calvillo (UTC)
-"""
-
 from flask import Blueprint, request, jsonify
 from backend.database import db_repo
-from backend.servises.ai_service import ai_service
-from backend.servises.disconnection_service import disconnection_service
-from backend.servises.synthetic_enrichment import enrich_telemetry
+from backend.services.ai_service import ai_service
+from backend.services.disconnection_service import disconnection_service
+from backend.services.synthetic_enrichment import enrich_telemetry
 from security.snmp_service import snmp_agent
 from security.syslog_service import syslog_client, SyslogFacility, SyslogSeverity
 

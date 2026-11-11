@@ -77,7 +77,7 @@ Sistema_Electrico_de_anomalias/
 │   │   ├── actuators.py               # Control y desconexión de relés
 │   │   ├── text_mining_routes.py      # Endpoints de clasificación de reportes
 │   │   └── security_routes.py         # Endpoints de Syslog, SNMP, DoS y Honeypot
-│   └── servises/
+│   └── services/
 │       ├── ai_service.py              # Servicio de inferencia en tiempo real
 │       └── disconnection_service.py   # Lógica de corte automatizado de cargas
 │

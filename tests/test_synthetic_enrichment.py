@@ -5,8 +5,8 @@ Universidad Tecnológica de Calvillo (UTC)
 
 import unittest
 from backend.app import create_app
-from backend.servises.synthetic_enrichment import enrich_telemetry
-from backend.servises.ai_service import ai_service
+from backend.services.synthetic_enrichment import enrich_telemetry
+from backend.services.ai_service import ai_service
 
 
 class TestSyntheticEnrichment(unittest.TestCase):
