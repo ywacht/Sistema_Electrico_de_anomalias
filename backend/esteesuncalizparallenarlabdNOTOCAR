@@ -1,0 +1,132 @@
+import random
+from datetime import datetime, timezone, timedelta
+from backend.models.db_connection import (
+    get_lecturas_col,
+    get_bitacoras_col,
+    get_predicciones_col,
+    get_clasificaciones_col,
+    get_cargas_col,
+    get_eventos_seguridad_col,
+)
+
+def seed_all():
+    print("Conectando a MongoDB Atlas e iniciando poblado de datos...")
+    now = datetime.now(timezone.utc)
+
+    # 1. Colección 'cargas' (Inventario de nodos/medidores conectados)
+    cargas_col = get_cargas_col()
+    cargas_data = [
+        {
+            "medidor_id": "esp32_sensor_01",
+            "nombre": "Subestación Acometida - ACS712",
+            "ubicacion": "Edificio Principal - Tablero A",
+            "estado_rele": 1,
+            "umbral_corriente_max": 35.0,
+            "prioridad": "alta",
+        },
+        {
+            "medidor_id": "esp32_sensor_02",
+            "nombre": "Laboratorio de Cómputo",
+            "ubicacion": "Edificio B - Planta Alta",
+            "estado_rele": 1,
+            "umbral_corriente_max": 25.0,
+            "prioridad": "media",
+        },
+    ]
+    cargas_col.delete_many({})
+    cargas_col.insert_many(cargas_data)
+    print(f"[OK] 'cargas': {len(cargas_data)} nodos registrados.")
+
+    # 2. Colección 'lecturas' (Histórico de las últimas 2 horas cumpliendo CONTRATO_LECTURAS)
+    lecturas_col = get_lecturas_col()
+    lecturas_data = []
+    for i in range(30):
+        ts = (now - timedelta(minutes=(30 - i) * 4)).isoformat()
+        voltaje = round(random.uniform(118.5, 122.0), 2)
+        corriente = round(random.uniform(4.2, 8.8), 2)
+        potencia_kw = round((voltaje * corriente * 0.95) / 1000.0, 4)
+        lecturas_data.append({
+            "medidor_id": "esp32_sensor_01",
+            "timestamp": ts,
+            "voltaje": voltaje,
+            "corriente": corriente,
+            "potencia_kw": potencia_kw,
+            "origen": "simulador",
+        })
+    lecturas_col.insert_many(lecturas_data)
+    print(f"[OK] 'lecturas': {len(lecturas_data)} registros históricos insertados.")
+
+    # 3. Colección 'clasificaciones' (Resultados del motor de IA)
+    clasificaciones_col = get_clasificaciones_col()
+    clasificaciones_data = [
+        {
+            "medidor_id": "esp32_sensor_01",
+            "timestamp": (now - timedelta(minutes=15)).isoformat(),
+            "patron": "Normal",
+            "confianza": 0.97,
+            "accion_tomada": "ninguna",
+        },
+        {
+            "medidor_id": "esp32_sensor_01",
+            "timestamp": (now - timedelta(minutes=5)).isoformat(),
+            "patron": "Pico de Demanda",
+            "confianza": 0.89,
+            "accion_tomada": "alerta_preventiva",
+        },
+    ]
+    clasificaciones_col.insert_many(clasificaciones_data)
+    print(f"[OK] 'clasificaciones': {len(clasificaciones_data)} evaluaciones de IA insertadas.")
+
+    # 4. Colección 'predicciones' (Proyecciones de consumo futuro)
+    predicciones_col = get_predicciones_col()
+    predicciones_data = [
+        {
+            "medidor_id": "esp32_sensor_01",
+            "timestamp_generacion": now.isoformat(),
+            "horizonte_horas": 1,
+            "consumo_estimado_kwh": 0.85,
+            "riesgo_sobrecarga": "bajo",
+        }
+    ]
+    predicciones_col.insert_many(predicciones_data)
+    print(f"[OK] 'predicciones': {len(predicciones_data)} proyecciones insertadas.")
+
+    # 5. Colección 'bitacoras' (Reportes técnicos y fallas)
+    bitacoras_col = get_bitacoras_col()
+    bitacoras_data = [
+        {
+            "medidor_id": "esp32_sensor_01",
+            "timestamp": (now - timedelta(hours=1)).isoformat(),
+            "texto": "Calibración inicial del sensor ACS712 completada sin desviación.",
+            "severidad": "bajo",
+            "origen": "simulador",
+        },
+        {
+            "medidor_id": "esp32_sensor_01",
+            "timestamp": (now - timedelta(minutes=10)).isoformat(),
+            "texto": "Fluctuación transitoria de corriente detectada durante arranque de compresor.",
+            "severidad": "medio",
+            "origen": "esp32",
+        },
+    ]
+    bitacoras_col.insert_many(bitacoras_data)
+    print(f"[OK] 'bitacoras': {len(bitacoras_data)} entradas registradas.")
+
+    # 6. Colección 'eventos_seguridad' (Registros de Honeypot / DoS / Syslog)
+    seguridad_col = get_eventos_seguridad_col()
+    seguridad_data = [
+        {
+            "timestamp": (now - timedelta(minutes=20)).isoformat(),
+            "tipo": "HONEYPOT_PROBE",
+            "ip_origen": "192.168.1.105",
+            "ruta_objetivo": "/scada/admin",
+            "severidad": "alto",
+            "accion": "IP bloqueada temporalmente y trap SNMP enviado",
+        }
+    ]
+    seguridad_col.insert_many(seguridad_data)
+    print(f"[OK] 'eventos_seguridad': {len(seguridad_data)} eventos registrados.")
+    print("\n¡Base de datos 'ecogrid_ai_db' poblada con éxito!")
+
+if __name__ == "__main__":
+    seed_all()
