@@ -46,9 +46,9 @@ def create_app():
     # -------------------------------------------------------------
     @app.before_request
     def security_filter():
-        client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "127.0.0.1")
-        if "," in client_ip:
-            client_ip = client_ip.split(",")[0].strip()
+        # Use REMOTE_ADDR by default. Only trust X-Forwarded-For when deployed
+        # behind a trusted proxy configured to sanitize that header.
+        client_ip = request.remote_addr or "127.0.0.1"
 
         path = request.path
 

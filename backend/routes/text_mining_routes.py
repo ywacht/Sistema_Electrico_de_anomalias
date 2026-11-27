@@ -6,7 +6,7 @@ Universidad Tecnológica de Calvillo (UTC)
 
 from flask import Blueprint, request, jsonify
 from backend.database import db_repo
-from backend.servises.ai_service import ai_service
+from backend.services.ai_service import ai_service
 from security.syslog_service import syslog_client, SyslogFacility, SyslogSeverity
 
 text_mining_bp = Blueprint("text_mining", __name__, url_prefix="/api/text-mining")

@@ -1,14 +1,10 @@
-"""
-EcoGrid AI - Rutas de Telemetría Eléctrica e Ingestión
-Asignatura: Bases de Datos en la Nube (SW) & Fundamentos de IA
-Universidad Tecnológica de Calvillo (UTC)
-"""
+from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify
 from backend.database import db_repo
-from backend.servises.ai_service import ai_service
-from backend.servises.disconnection_service import disconnection_service
-from backend.servises.synthetic_enrichment import enrich_telemetry
+from backend.services.ai_service import ai_service
+from backend.services.disconnection_service import disconnection_service
+from backend.services.synthetic_enrichment import enrich_telemetry
 from security.snmp_service import snmp_agent
 from security.syslog_service import syslog_client, SyslogFacility, SyslogSeverity
 
@@ -21,13 +17,15 @@ def ingest_telemetry():
     Ingestión de datos de telemetría de alta frecuencia provenientes de ESP32 o simuladores.
     Ejecuta en línea:
     1. Enriquecimiento sintético si la lectura es parcial (sensor de corriente único).
-    2. Inferencia del modelo de IA sobre patrones de consumo.
-    3. Evaluación de corte automático si detecta sobrecarga peligrosa.
-    4. Persistencia en el repositorio no relacional de series de tiempo.
-    5. Actualización de variables MIB de SNMP.
+    2. Inferencia del modelo de IA académico sobre patrones de consumo (vector completo).
+    3. NUEVO: Inferencia del pipeline de 3 modelos basado solo en corriente (ecogrid_ai).
+    4. Evaluación de corte automático si cualquiera de los dos detecta sobrecarga peligrosa.
+    5. Persistencia en el repositorio no relacional de series de tiempo.
+    6. Actualización de variables MIB de SNMP.
     """
     data = request.get_json(silent=True) or {}
     device_id = data.get("device_id", "esp32_sensor_01")
+    timestamp_iso = data.get("timestamp") or datetime.now(timezone.utc).isoformat()
 
     # MÓDULO TEMPORAL: Enriquecimiento sintético para nodo con sensor único de corriente (ACS712)
     # Si la lectura no trae el vector completo, rellenar sintéticamente campos ausentes
@@ -72,7 +70,7 @@ def ingest_telemetry():
         data.get("reactive_power", voltage * current * ((1.0 - power_factor ** 2) ** 0.5 if power_factor <= 1.0 else 0.0))
     )
 
-    # 1. Evaluación con Inteligencia Artificial (Redes Neuronales / KNN / SVM)
+    # 1. Evaluación académica con Inteligencia Artificial (Redes Neuronales / KNN / SVM)
     ai_result = ai_service.evaluate_telemetry(
         voltage=voltage,
         current=current,
@@ -87,17 +85,27 @@ def ingest_telemetry():
     pattern_class = ai_result["class_name"]
     should_disconnect = ai_result["should_disconnect"]
 
-    # 2. Lógica de Desconexión Automatizada de Cargas
+    # 2. NUEVO: evaluación con el pipeline de 3 modelos basado solo en corriente
+    ecogrid_result = ai_service.evaluate_current_pipeline(device_id, timestamp_iso, current)
+    if ecogrid_result is not None:
+        # "regla_dura" corta sin importar lo que diga cualquier otro modelo
+        if ecogrid_result.get("regla_dura") or ecogrid_result.get("predicted_severity") == "Crítico":
+            should_disconnect = True
+
+    # 3. Lógica de Desconexión Automatizada de Cargas
     relay_info = disconnection_service.get_relay_state(device_id)
     if should_disconnect and relay_info["state"] == 1:
+        motivo = f"IA clasificó patrón anómalo: {pattern_class}"
+        if ecogrid_result is not None and ecogrid_result.get("regla_dura"):
+            motivo = "Regla dura de corriente crítica (ecogrid_ai)"
         relay_info = disconnection_service.evaluate_automatic_cutoff(
             device_id=device_id,
             current=current,
             is_ai_anomaly=True,
-            reason=f"IA clasificó patrón anómalo: {pattern_class}",
+            reason=motivo,
         )
 
-    # 3. Almacenamiento en repositorio no relacional (series de tiempo)
+    # 4. Almacenamiento en repositorio no relacional (series de tiempo)
     payload_to_store = {
         "device_id": device_id,
         "location": data.get("location", "Tablero Principal"),
@@ -113,10 +121,11 @@ def ingest_telemetry():
         "pattern_class": pattern_class,
         "should_disconnect": should_disconnect,
         "synthetic_enrichment": data.get("_synthetic_enrichment", False),
+        "ecogrid_ai_severity": ecogrid_result.get("predicted_severity") if ecogrid_result else None,
     }
     db_repo.insert_telemetry(payload_to_store)
 
-    # 4. Actualización del agente SNMP
+    # 5. Actualización del agente SNMP
     snmp_agent.update_telemetry_mib(
         voltage=voltage,
         current=current,
@@ -130,10 +139,40 @@ def ingest_telemetry():
         "relay_state": relay_info["state"],
         "relay_mode": relay_info["mode"],
         "ai_evaluation": ai_result,
+        "ecogrid_ai_evaluation": ecogrid_result,
+        "should_disconnect": should_disconnect,
         "stored": True,
         "synthetic_enrichment": data.get("_synthetic_enrichment", False),
         "enriched_fields": data.get("_enriched_fields", []),
     }), 201
+
+
+@telemetry_bp.route("/devices", methods=["GET"])
+def list_devices():
+    """
+    Lista los device_id que han enviado telemetría (únicos), con número de muestras
+    y el estado actual de su relé. Permite al frontend crear un módulo por nodo.
+    """
+    limit = int(request.args.get("limit", 500))
+    records = db_repo.query_timeseries(limit=limit)
+
+    devices = {}
+    for r in records:
+        did = (r.get("metadata") or {}).get("device_id")
+        if not did:
+            continue
+        entry = devices.setdefault(did, {"device_id": did, "samples": 0})
+        entry["samples"] += 1
+
+    # Incluir también actuadores registrados aunque aún no tengan telemetría en la ventana consultada
+    for did in getattr(disconnection_service, "device_relays", {}).keys():
+        devices.setdefault(did, {"device_id": did, "samples": 0})
+
+    for did, entry in devices.items():
+        entry["relay_state"] = disconnection_service.get_relay_state(did)["state"]
+
+    result = sorted(devices.values(), key=lambda d: d["device_id"])
+    return jsonify({"total": len(result), "devices": result})
 
 
 @telemetry_bp.route("/timeseries", methods=["GET"])
