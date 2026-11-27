@@ -18,7 +18,7 @@ class DoSProtectionEngine:
     Motor de mitigación de ataques DoS en tiempo real.
     """
 
-    def __init__(self, max_req_per_second=20, max_req_per_minute=100, ban_duration_seconds=300):
+    def __init__(self, max_req_per_second=60, max_req_per_minute=600, ban_duration_seconds=300):
         self.max_req_per_second = max_req_per_second
         self.max_req_per_minute = max_req_per_minute
         self.ban_duration_seconds = ban_duration_seconds

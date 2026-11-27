@@ -1,5 +1,12 @@
 // EcoGrid AI - Frontend Application Logic
 
+if (window.Chart) Chart.defaults.font.family = "Inter, system-ui, sans-serif";
+
+function togglePasswordVisibility() {
+  const input = document.getElementById("loginPassword");
+  input.type = input.type === "password" ? "text" : "password";
+}
+
 let energyChart = null;
 const chartMaxPoints = 25;
 
@@ -101,7 +108,7 @@ function handleLogout() {
 // CONTROL DE PESTAÑAS (TABS)
 // -------------------------------------------------------------
 function switchTab(tabId) {
-  const sections = ["tab-monitoring", "tab-relay", "tab-textmining", "tab-security", "tab-simulator"];
+  const sections = ["tab-monitoring", "tab-fleet", "tab-relay", "tab-textmining", "tab-security", "tab-simulator"];
   sections.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.style.display = id === tabId ? "block" : "none";
@@ -109,10 +116,14 @@ function switchTab(tabId) {
 
   const buttons = document.querySelectorAll(".tab-btn");
   buttons.forEach((btn) => btn.classList.remove("active"));
-  event.target.classList.add("active");
+  (event.currentTarget || event.target).classList.add("active");
 
   if (tabId === "tab-security") {
     refreshSecurity();
+  }
+  if (tabId === "tab-fleet") {
+    refreshFleet();
+    resizeDeviceCharts();
   }
 }
 
@@ -181,7 +192,7 @@ function initChart() {
 // -------------------------------------------------------------
 async function refreshTelemetry() {
   try {
-    const res = await fetch("/api/telemetry/latest");
+    const res = await fetch(monitorDeviceId ? `/api/telemetry/latest?device_id=${encodeURIComponent(monitorDeviceId)}` : "/api/telemetry/latest");
     if (!res.ok) return;
     const data = await res.json();
     const metrics = data.metrics || {};
@@ -244,62 +255,6 @@ async function refreshTelemetry() {
     }
   } catch (err) {
     console.error("Error refreshing telemetry:", err);
-  }
-}
-
-// -------------------------------------------------------------
-// CONTROL DEL RELÉ DE DESCONEXIÓN
-// -------------------------------------------------------------
-async function refreshRelay() {
-  try {
-    const res = await fetch("/api/actuators/relay/esp32_sensor_01");
-    if (!res.ok) return;
-    const data = await res.json();
-
-    const isConnected = data.relay_state === 1;
-    const title = document.getElementById("relayStatusTitle");
-    const reason = document.getElementById("relayReasonText");
-    const icon = document.getElementById("breakerIcon");
-    const modeBadge = document.getElementById("relayModeBadge");
-    const tripVal = document.getElementById("tripCountVal");
-
-    tripVal.textContent = data.trip_count || 0;
-    modeBadge.textContent = `MODO: ${data.mode || "AUTOMÁTICO"}`;
-
-    if (isConnected) {
-      title.textContent = "CARGA CONECTADA";
-      title.style.color = "#00d26a";
-      reason.textContent = data.reason || "Operación nominal autorizada";
-      icon.className = "breaker-icon breaker-on";
-      icon.textContent = "⚡";
-    } else {
-      title.textContent = "CARGA DESCONECTADA (CORTE ACTIVO)";
-      title.style.color = "#ef4444";
-      reason.textContent = data.reason || "Corte de protección ejecutado";
-      icon.className = "breaker-icon breaker-off";
-      icon.textContent = "⛔";
-    }
-  } catch (err) {
-    console.error("Error refreshing relay:", err);
-  }
-}
-
-async function toggleRelay(state) {
-  try {
-    const res = await fetch("/api/actuators/relay/esp32_sensor_01", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        state: state,
-        reason: state === 1 ? "Reconexión manual desde Panel Web" : "Desconexión manual preventiva de emergencia",
-        mode: "MANUAL_WEB",
-      }),
-    });
-    if (res.ok) {
-      refreshRelay();
-    }
-  } catch (err) {
-    alert("Error al enviar comando al actuador: " + err);
   }
 }
 
@@ -375,6 +330,11 @@ async function loadIncidentHistory() {
       Baja: "tag-low",
     };
 
+    if (!data.logs || !data.logs.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Aún no hay incidentes analizados. Los resultados aparecerán aquí.</td></tr>';
+      return;
+    }
+
     data.logs.forEach((item) => {
       const tr = document.createElement("tr");
       const sevTag = `<span class="${tagClass[item.predicted_severity] || "tag-low"}">${item.predicted_severity}</span>`;
@@ -436,6 +396,9 @@ async function refreshSecurity() {
       const sysData = await sysRes.json();
       const consoleEl = document.getElementById("syslogConsole");
       consoleEl.innerHTML = "";
+      if (!sysData.events || !sysData.events.length) {
+        consoleEl.innerHTML = '<div class="log-placeholder">Esperando eventos…</div>';
+      }
       sysData.events.forEach((ev) => {
         const div = document.createElement("div");
         div.className = "log-entry";
@@ -510,7 +473,7 @@ async function injectTelemetry(mode) {
   }
 
   const payload = {
-    device_id: "esp32_sensor_01",
+    device_id: (document.getElementById("injectDevice") || {}).value || "esp32_sensor_01",
     voltage: v,
     current: i,
     active_power: +(v * i * pf).toFixed(1),
@@ -532,7 +495,7 @@ async function injectTelemetry(mode) {
       const ai = data.ai_evaluation;
       alert(`⚡ Inyección Exitosa:\nModo: ${mode.toUpperCase()}\nPatrón IA Clasificado: ${ai.class_name}\nAcción: ${ai.action}\nEstado de Relé: ${data.relay_state === 1 ? "CONECTADO" : "¡DESCONECTADO POR SEGURIDAD!"}`);
       refreshTelemetry();
-      refreshRelay();
+      refreshDevices();
     }
   } catch (err) {
     alert("Error inyectando telemetría: " + err);
@@ -543,4 +506,355 @@ function refreshAllData() {
   refreshTelemetry();
   refreshRelay();
   refreshSecurity();
+  refreshFleet();
+}
+
+// -------------------------------------------------------------
+// MULTI-NODO: detección dinámica de device_id, un módulo y una gráfica por dispositivo
+// -------------------------------------------------------------
+const FLEET_SEED_IDS = ["esp32_sensor_01", "esp32_virtual_01", "esp32_virtual_02", "esp32_virtual_03", "esp32_virtual_04"];
+const DEVICE_COLORS = ["#2dd4bf", "#60a5fa", "#f59e0b", "#c084fc", "#f472b6", "#a3e635", "#fb923c", "#38bdf8"];
+const knownDevices = [];     // orden de descubrimiento (colores estables)
+const deviceCharts = {};     // device_id -> instancia Chart.js propia
+let devicesBusy = false;
+let devicesPending = false;
+let monitorDeviceId = "";    // "" = última lectura de cualquier nodo
+
+function escapeHtml(v) {
+  return String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function fetchJson(url) {
+  try {
+    const res = await fetch(url);
+    return res.ok ? await res.json() : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function deviceColor(id) {
+  let i = knownDevices.indexOf(id);
+  if (i < 0) { knownDevices.push(id); i = knownDevices.length - 1; }
+  return DEVICE_COLORS[i % DEVICE_COLORS.length];
+}
+
+function recordDate(r) {
+  const raw = r && (r.timestamp || (r.metadata && r.metadata.timestamp) || r.time || r.created_at || r.ts);
+  const d = raw ? new Date(raw) : null;
+  return d && !isNaN(d) ? d : null;
+}
+
+function normalizeRecords(records) {
+  const items = (records || []).filter((r) => r && r.metrics);
+  // si todos traen fecha válida, ordenar de más antiguo a más reciente
+  if (items.length > 1 && items.every((r) => recordDate(r))) items.sort((a, b) => recordDate(a) - recordDate(b));
+  return items;
+}
+
+// 1) Detecta device_id: endpoint /devices si existe; si no, escanea el historial global. Siempre suma /actuators/all.
+async function discoverDevices() {
+  const candidates = new Set(FLEET_SEED_IDS);
+  const registered = new Set();
+  const [list, actuators] = await Promise.all([
+    fetchJson("/api/telemetry/devices"),
+    fetchJson("/api/actuators/all"),
+  ]);
+
+  if (list && Array.isArray(list.devices)) {
+    list.devices.forEach((d) => {
+      const id = typeof d === "string" ? d : d && d.device_id;
+      if (id) candidates.add(id);
+    });
+  } else {
+    const history = await fetchJson("/api/telemetry/timeseries?limit=300");
+    if (history && Array.isArray(history.data)) {
+      history.data.forEach((r) => {
+        const id = r && r.metadata && r.metadata.device_id;
+        if (id) candidates.add(id);
+      });
+    }
+  }
+
+  if (actuators && typeof actuators === "object") {
+    Object.keys(actuators).forEach((id) => { candidates.add(id); registered.add(id); });
+  }
+  return { candidates: [...candidates], registered };
+}
+
+async function loadDeviceData(id) {
+  const series = await fetchJson(`/api/telemetry/timeseries?device_id=${encodeURIComponent(id)}&limit=30`);
+  const records = normalizeRecords(series && series.data);
+  return { id, records, hasData: records.length > 0, relay: null };
+}
+
+function patternTone(pattern) {
+  if (pattern === "Sobrecarga / Anomalía") return "bad";
+  if (pattern === "Pico de Demanda") return "warn";
+  if (pattern === "Fuga / Consumo Parásito") return "leak";
+  return "ok";
+}
+
+// 2) Ciclo único: descubre → carga cada nodo → consulta su relé → pinta todo
+async function refreshDevices() {
+  if (devicesBusy) { devicesPending = true; return; }
+  devicesBusy = true;
+  try {
+    do {
+      devicesPending = false;
+      const { candidates, registered } = await discoverDevices();
+      const loaded = await Promise.all(candidates.map(loadDeviceData));
+      // solo se muestran nodos con lecturas o registrados como actuadores (evita tarjetas fantasma)
+      const visible = loaded.filter((d) => d.hasData || registered.has(d.id));
+      await Promise.all(visible.map(async (d) => {
+        d.relay = await fetchJson(`/api/actuators/relay/${encodeURIComponent(d.id)}`);
+      }));
+      visible.sort((a, b) => Number(b.hasData) - Number(a.hasData) || a.id.localeCompare(b.id));
+      visible.forEach((d) => deviceColor(d.id));
+
+      renderFleet(visible);
+      renderRelayModules(visible);
+      syncDeviceSelectors(visible);
+    } while (devicesPending);
+  } catch (err) {
+    console.error("Error refreshing devices:", err);
+  } finally {
+    devicesBusy = false;
+  }
+}
+
+function refreshFleet() { return refreshDevices(); }
+function refreshRelay() { return refreshDevices(); }
+
+function relayIsOn(d) {
+  if (d.relay) return d.relay.relay_state === 1;
+  const last = d.records[d.records.length - 1];
+  return last && last.metrics ? last.metrics.relay_state === 1 : true;
+}
+
+// ---------- Tarjeta + gráfica de corriente por nodo (se crean una vez y se actualizan) ----------
+function createDeviceCard(id) {
+  const card = document.createElement("article");
+  card.className = "node-card tone-idle";
+  card.dataset.device = id;
+  card.innerHTML = `
+    <header class="node-head">
+      <span class="node-dot"></span>
+      <div class="node-title"><h3 data-f="name"></h3><p data-f="loc"></p></div>
+      <span class="node-state" data-f="state"></span>
+    </header>
+    <div class="node-kpis">
+      <div><span class="node-power-value" data-f="current">0.00</span><span class="node-power-unit">A</span></div>
+      <div class="node-sub"><span data-f="power">0</span> W</div>
+    </div>
+    <div class="node-chart"><canvas></canvas></div>
+    <dl class="node-metrics">
+      <div><dt>Tensión</dt><dd data-f="voltage">0 V</dd></div>
+      <div><dt>F. potencia</dt><dd data-f="pf">0.00</dd></div>
+      <div><dt>Frecuencia</dt><dd data-f="freq">0 Hz</dd></div>
+      <div><dt>Temp.</dt><dd data-f="temp">0 °C</dd></div>
+    </dl>
+    <footer class="node-foot">
+      <span class="pill" data-f="pattern"></span>
+      <span class="relay-chip" data-f="relay"></span>
+      <button type="button" class="btn btn-secondary btn-sm" data-f="toggle"></button>
+    </footer>`;
+  card.querySelector('[data-f="name"]').textContent = id;
+  card.querySelector('[data-f="toggle"]').addEventListener("click", (e) => {
+    toggleDeviceRelay(id, Number(e.currentTarget.dataset.next));
+  });
+  return card;
+}
+
+function updateDeviceCard(card, d) {
+  const f = (k) => card.querySelector(`[data-f="${k}"]`);
+  const color = deviceColor(d.id);
+  const last = d.records[d.records.length - 1];
+  const m = (last && last.metrics) || {};
+  const ai = (last && last.ai_evaluation) || {};
+  const pattern = ai.pattern_class || "Normal";
+  const tone = d.hasData ? patternTone(pattern) : "idle";
+  const on = relayIsOn(d);
+
+  card.className = `node-card tone-${tone}`;
+  card.querySelector(".node-dot").style.background = color;
+  f("loc").textContent = (last && last.metadata && last.metadata.location) || "Sin ubicación";
+  f("state").textContent = d.hasData ? "En línea" : "Sin datos";
+  f("state").className = `node-state ${d.hasData ? "is-live" : "is-idle"}`;
+  f("current").textContent = (m.current || 0).toFixed(2);
+  f("power").textContent = (m.active_power || 0).toFixed(0);
+  f("voltage").textContent = `${(m.voltage || 0).toFixed(1)} V`;
+  f("pf").textContent = (m.power_factor || 0).toFixed(2);
+  f("freq").textContent = `${(m.frequency || 0).toFixed(1)} Hz`;
+  f("temp").textContent = `${(m.temperature || 0).toFixed(0)} °C`;
+  f("pattern").textContent = d.hasData ? pattern : "Inactivo";
+  f("pattern").className = `pill pill-${tone}`;
+  f("relay").textContent = on ? "Relé conectado" : "Relé abierto";
+  f("relay").className = `relay-chip ${on ? "on" : "off"}`;
+  f("toggle").textContent = on ? "Cortar" : "Reconectar";
+  f("toggle").dataset.next = on ? 0 : 1;
+
+  updateDeviceChart(card, d, color);
+}
+
+function updateDeviceChart(card, d, color) {
+  if (typeof Chart === "undefined") return;
+  const labels = d.records.map((r, i) => {
+    const t = recordDate(r);
+    return t ? t.toLocaleTimeString() : String(i + 1);
+  });
+  const values = d.records.map((r) => r.metrics.current || 0);
+  let chart = deviceCharts[d.id];
+
+  if (!chart) {
+    chart = new Chart(card.querySelector("canvas").getContext("2d"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{ label: "Corriente (A)", data: values, borderColor: color, backgroundColor: color + "22", fill: true, tension: 0.3, borderWidth: 2, pointRadius: 0 }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        scales: {
+          x: { grid: { display: false }, ticks: { color: "#8b97ad", maxTicksLimit: 4, maxRotation: 0 } },
+          y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#8b97ad", maxTicksLimit: 4 }, title: { display: true, text: "A", color: "#8b97ad" } },
+        },
+        plugins: { legend: { display: false } },
+      },
+    });
+    deviceCharts[d.id] = chart;
+  } else {
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = values;
+    chart.update("none");
+  }
+}
+
+function destroyDeviceChart(id) {
+  if (deviceCharts[id]) { deviceCharts[id].destroy(); delete deviceCharts[id]; }
+}
+
+function resizeDeviceCharts() {
+  Object.values(deviceCharts).forEach((c) => c.resize());
+}
+
+function renderFleet(visible) {
+  const grid = document.getElementById("fleetGrid");
+  if (!grid) return;
+  const ids = new Set(visible.map((d) => d.id));
+
+  grid.querySelectorAll(".node-card").forEach((card) => {
+    if (!ids.has(card.dataset.device)) { destroyDeviceChart(card.dataset.device); card.remove(); }
+  });
+
+  const empty = grid.querySelector(".fleet-empty");
+  if (!visible.length) {
+    if (!empty) grid.insertAdjacentHTML("beforeend", '<div class="fleet-empty">Aún no hay nodos reportando. Inyecta telemetría desde la pestaña 5 o enciende un ESP32.</div>');
+  } else if (empty) {
+    empty.remove();
+  }
+
+  visible.forEach((d) => {
+    let card = [...grid.querySelectorAll(".node-card")].find((c) => c.dataset.device === d.id);
+    if (!card) { card = createDeviceCard(d.id); grid.appendChild(card); }
+    updateDeviceCard(card, d);
+  });
+
+  const live = visible.filter((d) => d.hasData);
+  const totalPower = live.reduce((acc, d) => acc + (d.records[d.records.length - 1].metrics.active_power || 0), 0);
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setText("fleetTotal", visible.length);
+  setText("fleetOn", visible.filter(relayIsOn).length);
+  setText("fleetOff", visible.filter((d) => !relayIsOn(d)).length);
+  setText("fleetPower", totalPower.toFixed(0));
+  setText("fleetUpdated", new Date().toLocaleTimeString());
+  setText("fleetCountPill", visible.length);
+}
+
+// ---------- Pantalla 2: un módulo de relé por dispositivo ----------
+function renderRelayModules(visible) {
+  const box = document.getElementById("relayDevices");
+  if (!box) return;
+  if (!visible.length) {
+    box.innerHTML = '<div class="fleet-empty">Aún no hay actuadores registrados.</div>';
+    return;
+  }
+  box.innerHTML = visible.map((d) => {
+    const on = relayIsOn(d);
+    const r = d.relay || {};
+    const id = escapeHtml(d.id);
+    const reason = d.relay ? (r.reason || (on ? "Operación nominal autorizada" : "Corte de protección ejecutado")) : "Sin respuesta del actuador";
+    return `
+      <article class="relay-module ${on ? "is-on" : "is-off"}">
+        <header class="relay-module-head">
+          <span class="node-dot" style="background:${deviceColor(d.id)}"></span>
+          <h3>${id}</h3>
+          <span class="status-pill ${on ? "green" : "red"}">${escapeHtml(r.mode || "AUTOMÁTICO")}</span>
+        </header>
+        <div class="relay-module-body">
+          <div class="breaker-icon ${on ? "breaker-on" : "breaker-off"}">${on ? "⚡" : "⛔"}</div>
+          <div>
+            <h4 class="relay-title ${on ? "ok" : "bad"}">${on ? "Carga conectada" : "Carga desconectada (corte activo)"}</h4>
+            <p class="relay-reason">${escapeHtml(reason)}</p>
+            <p class="relay-trips">Disparos acumulados: <strong>${Number(r.trip_count) || 0}</strong></p>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" data-relay-id="${id}" data-state="1">Reconectar</button>
+          <button class="btn btn-danger btn-sm" data-relay-id="${id}" data-state="0">Desconectar</button>
+        </div>
+      </article>`;
+  }).join("");
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-relay-id]");
+  if (btn) toggleDeviceRelay(btn.dataset.relayId, Number(btn.dataset.state));
+});
+
+async function toggleDeviceRelay(deviceId, state) {
+  try {
+    const res = await fetch(`/api/actuators/relay/${encodeURIComponent(deviceId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        state: state,
+        reason: state === 1 ? "Reconexión manual desde Panel Web" : "Desconexión manual preventiva de emergencia",
+        mode: "MANUAL_WEB",
+      }),
+    });
+    if (res.ok) refreshDevices();
+  } catch (err) {
+    alert("Error al enviar comando al actuador: " + err);
+  }
+}
+
+// ---------- Selectores de nodo (Monitoreo y Banco de pruebas) ----------
+function fillSelect(sel, items) {
+  if (!sel) return;
+  const sig = items.map((i) => i.value).join("|");
+  if (sel.dataset.sig === sig) return; // no tocar el desplegable si no cambió
+  const current = sel.value;
+  sel.innerHTML = items.map((i) => `<option value="${escapeHtml(i.value)}">${escapeHtml(i.label)}</option>`).join("");
+  sel.dataset.sig = sig;
+  if ([...sel.options].some((o) => o.value === current)) sel.value = current;
+}
+
+function syncDeviceSelectors(visible) {
+  const ids = visible.map((d) => d.id);
+  fillSelect(document.getElementById("monitorDevice"), [{ value: "", label: "Último nodo que reportó" }, ...ids.map((id) => ({ value: id, label: id }))]);
+  const inject = ids.includes("esp32_sensor_01") ? ids : ["esp32_sensor_01", ...ids];
+  fillSelect(document.getElementById("injectDevice"), inject.map((id) => ({ value: id, label: id })));
+}
+
+function onMonitorDeviceChange(sel) {
+  monitorDeviceId = sel.value;
+  if (energyChart) {
+    energyChart.data.labels = [];
+    energyChart.data.datasets.forEach((ds) => { ds.data = []; });
+    energyChart.update("none");
+  }
+  refreshTelemetry();
 }

@@ -1,0 +1,6 @@
+{
+  "device_id": "esp32_virtual_03",
+  "load": "Iluminacion",
+  "normal_current_amps": 0.25,
+  "local_threshold_amps": 1.0
+}

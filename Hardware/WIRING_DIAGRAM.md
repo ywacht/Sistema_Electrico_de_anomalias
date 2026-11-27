@@ -11,7 +11,7 @@
 > [!NOTE]
 > **Aviso de Arquitectura Hardware:**  
 > Tras la avería física de uno de los microcontroladores ESP32 en laboratorio, el proyecto opera con **UN SOLO nodo ESP32 DevKit V1** físico que concentra el monitoreo de corriente (mediante sensor de efecto Hall ACS712) y el control de desconexión mediante módulo relé.  
-> Los parámetros no medidos físicamente (tensión, factor de potencia, armónicos y temperatura) son completados temporalmente en el backend mediante el módulo `backend/servises/synthetic_enrichment.py`.
+> Los parámetros no medidos físicamente (tensión, factor de potencia, armónicos y temperatura) son completados temporalmente en el backend mediante el módulo `backend/services/synthetic_enrichment.py`.
 
 ```
 [Red Eléctrica AC ~120V]

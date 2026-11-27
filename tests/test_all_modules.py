@@ -18,7 +18,7 @@ from ai_engine.models.consumption_classifier import (
 )
 from ai_engine.models.text_mining_classifier import IncidentTextMiningClassifier
 from backend.database import TimeSeriesCloudRepository
-from backend.servises.disconnection_service import LoadDisconnectionService
+from backend.services.disconnection_service import LoadDisconnectionService
 from security.syslog_service import EcoGridSyslogClient, SyslogFacility, SyslogSeverity
 from security.snmp_service import EcoGridSNMPAgent
 from security.dos_protection import DoSProtectionEngine

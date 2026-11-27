@@ -9,6 +9,7 @@ de intrusión, emitir alertas Syslog/SNMP y añadirlos automáticamente a la lis
 """
 
 import time
+from collections import defaultdict, deque
 from datetime import datetime, timezone
 from security.syslog_service import syslog_client, SyslogFacility, SyslogSeverity
 from security.snmp_service import snmp_agent
@@ -39,6 +40,9 @@ class EcoGridHoneypot:
     def __init__(self):
         self.trap_history = []
         self.total_trapped_attackers = 0
+        self.hits_by_ip = defaultdict(deque)
+        self.ban_threshold = 3  # 3 señuelos en 60 segundos
+        self.ban_window_seconds = 60
 
     def is_decoy_path(self, path):
         """Verifica si la ruta solicitada corresponde a una trampa Honeypot."""
@@ -93,12 +97,24 @@ class EcoGridHoneypot:
             severity="WARNING",
         )
 
-        # 3. Contramedida activa: Baneo automático de la IP en el motor DoS / Firewall
-        dos_engine.ban_ip(
-            ip=ip,
-            reason=f"Acceso a trampa Honeypot ({path})",
-            duration=600,  # 10 minutos de bloqueo
-        )
+        # 3. Registrar hits y bloquear solo ante comportamiento repetido.
+        # Un hit aislado se registra y alerta, pero no provoca un baneo inmediato.
+        now = time.time()
+        hits = self.hits_by_ip[ip]
+        while hits and now - hits[0] > self.ban_window_seconds:
+            hits.popleft()
+        hits.append(now)
+
+        if len(hits) >= self.ban_threshold:
+            dos_engine.ban_ip(
+                ip=ip,
+                reason=f"{len(hits)} accesos a señuelos en {self.ban_window_seconds}s (último: {path})",
+                duration=600,
+            )
+            hits.clear()
+            attempt_record["action_taken"] = "IP_AUTO_BLACKLISTED_AFTER_REPEATED_HITS"
+        else:
+            attempt_record["action_taken"] = "HONEYPOT_LOGGED_NO_BAN"
 
         return attempt_record
 

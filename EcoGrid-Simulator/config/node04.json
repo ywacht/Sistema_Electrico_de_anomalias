@@ -1,0 +1,6 @@
+{
+  "device_id": "esp32_virtual_04",
+  "load": "Carga de prueba",
+  "normal_current_amps": 1.10,
+  "local_threshold_amps": 2.0
+}
