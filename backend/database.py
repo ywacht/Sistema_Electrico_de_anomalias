@@ -1,4 +1,3 @@
-
 import os
 import time
 import json
@@ -55,6 +54,7 @@ class TimeSeriesCloudRepository:
             self.db.telemetry_timeseries.create_index([("metadata.device_id", 1), ("timestamp", -1)])
             self.db.incident_logs.create_index([("created_at", -1)])
             self.db.security_events.create_index([("timestamp", -1)])
+            self.db.sesiones.create_index([("timestamp", -1)])
         except Exception as e:
             print(f"[DATABASE] Aviso en configuración de colecciones Mongo: {e}")
 
@@ -104,6 +104,19 @@ class TimeSeriesCloudRepository:
                 source_ip TEXT,
                 message TEXT,
                 details TEXT
+            )
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS sesiones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                email TEXT,
+                name TEXT,
+                role TEXT,
+                success INTEGER,
+                source_ip TEXT,
+                user_agent TEXT
             )
         """)
         conn.commit()
@@ -329,6 +342,49 @@ class TimeSeriesCloudRepository:
                     pass
                 events.append(d)
             return events
+
+    def log_session(self, email, success=True, source_ip="", user_agent="", name="", role=""):
+        """Registra quién inició sesión (o intentó hacerlo) y cuándo. Nunca guarda contraseñas."""
+        now = datetime.now(timezone.utc).isoformat()
+        doc = {
+            "timestamp": now,
+            "email": email,
+            "name": name,
+            "role": role,
+            "success": bool(success),
+            "source_ip": source_ip,
+            "user_agent": (user_agent or "")[:300],
+        }
+        if self.use_mongo:
+            self.db.sesiones.insert_one(dict(doc))
+        else:
+            conn = sqlite3.connect(self.local_db_path)
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO sesiones (timestamp, email, name, role, success, source_ip, user_agent)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (now, email, name, role, 1 if success else 0, source_ip, doc["user_agent"]))
+            conn.commit()
+            conn.close()
+        return True
+
+    def query_sessions(self, limit=50):
+        """Obtiene el historial de inicios de sesión, más recientes primero."""
+        if self.use_mongo:
+            items = []
+            for item in self.db.sesiones.find().sort("timestamp", -1).limit(limit):
+                item["_id"] = str(item["_id"])
+                items.append(item)
+            return items
+        conn = sqlite3.connect(self.local_db_path)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM sesiones ORDER BY id DESC LIMIT ?", (limit,))
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        for r in rows:
+            r["success"] = bool(r["success"])
+        return rows
 
 
 # Instancia singleton del repositorio

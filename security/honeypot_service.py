@@ -10,10 +10,31 @@ de intrusión, emitir alertas Syslog/SNMP y añadirlos automáticamente a la lis
 
 import time
 from collections import defaultdict, deque
+from html import escape
 from datetime import datetime, timezone
 from security.syslog_service import syslog_client, SyslogFacility, SyslogSeverity
 from security.snmp_service import snmp_agent
 from security.dos_protection import dos_engine
+
+# Mismo repositorio (Mongo con fallback automático a SQLite) que usa el resto del backend.
+# NO se usa models/db_connection.py porque no tiene fallback.
+try:
+    from database import db_repo
+except ImportError:
+    from backend.database import db_repo
+
+
+def _sanitize(value, depth=0):
+    """Convierte lo capturado del atacante en datos seguros para JSON/BSON y de tamaño acotado."""
+    if depth > 3:
+        return str(value)[:200]
+    if isinstance(value, dict):
+        return {str(k)[:100]: _sanitize(v, depth + 1) for k, v in list(value.items())[:30]}
+    if isinstance(value, (list, tuple)):
+        return [_sanitize(v, depth + 1) for v in list(value)[:30]]
+    if isinstance(value, (int, float, bool)) or value is None:
+        return value
+    return str(value)[:500]
 
 
 # Endpoints señuelo (deceptive traps)
@@ -116,7 +137,35 @@ class EcoGridHoneypot:
         else:
             attempt_record["action_taken"] = "HONEYPOT_LOGGED_NO_BAN"
 
+        # 4. Persistir el evento en la base de datos (security_events, con fallback SQLite).
+        # Se hace al final para guardar la acción definitiva (baneo o solo registro).
+        self._persist_event(attempt_record)
+
         return attempt_record
+
+    def _persist_event(self, record):
+        """Guarda la intrusión vía db_repo. Un fallo de BD nunca debe romper el señuelo."""
+        banned = record["action_taken"] != "HONEYPOT_LOGGED_NO_BAN"
+        try:
+            db_repo.log_security_event(
+                event_type="HONEYPOT_INTRUSION",
+                severity="CRITICAL" if banned else "WARNING",
+                source_ip=record["attacker_ip"],
+                message=(
+                    f"Honeypot activado por {record['attacker_ip']} en '{record['target_path']}' "
+                    f"[{record['http_method']}] - {record['action_taken']}"
+                ),
+                details={
+                    "target_path": record["target_path"],
+                    "http_method": record["http_method"],
+                    "user_agent": record["user_agent"],
+                    "payload_captured": _sanitize(record["payload_captured"]),
+                    "action_taken": record["action_taken"],
+                    "honeypot_event_id": record["id"],
+                },
+            )
+        except Exception as e:
+            print(f"[HONEYPOT] No se pudo guardar el evento en la base de datos: {e}")
 
     def get_decoy_response_html(self, path):
         """
@@ -143,7 +192,7 @@ class EcoGridHoneypot:
         <h2>EcoGrid Modbus/SCADA Gateway</h2>
         <p>Firmware v2.4.1-build892 - ESP32 Gateway Node</p>
         <p style="color: #8b949e;">Target Unit: Subestación Central / Acometida Principal</p>
-        <form method="POST" action="{path}">
+        <form method="POST" action="{escape(path, quote=True)}">
             <label>Operator ID / Username:</label>
             <input type="text" name="username" placeholder="e.g. admin or operator" required autofocus>
             <label>Master Security Key:</label>

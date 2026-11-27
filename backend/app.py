@@ -1,4 +1,3 @@
-
 """
 EcoGrid AI - Plataforma Servidora Backend Principal
 Universidad Tecnológica de Calvillo (UTC)
@@ -54,6 +53,17 @@ def create_app():
 
         # 1. Trampa Honeypot: Detección proactiva de intrusos
         if honeypot.is_decoy_path(path):
+            # Si la IP ya está baneada, no se vuelve a registrar: de lo contrario un atacante
+            # podría seguir golpeando los señuelos (que van antes del filtro DoS) e inundar
+            # Syslog, SNMP y la base de datos con eventos repetidos.
+            if dos_engine.is_ip_banned(client_ip):
+                return jsonify({
+                    "status": "BLOCKED",
+                    "error": "Security Infrastructure Protection",
+                    "reason": "IP Bloqueada por políticas de defensa DoS",
+                    "ip": client_ip,
+                }), 403
+
             captured_payload = {}
             if request.method in ["POST", "PUT"]:
                 captured_payload = request.get_json(silent=True) or request.form.to_dict()
@@ -122,4 +132,3 @@ if __name__ == "__main__":
     print("  Asignaturas integradas: 6/6 + Honeypot + ESP32 Nodes")
     print("=" * 70)
     app.run(host="0.0.0.0", port=port, debug=False)
-
